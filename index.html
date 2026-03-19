@@ -421,8 +421,8 @@
                 // Calculate processing dimensions based on quality
                 const processingSize = getProcessingSize();
 
-                // U²-Net requires 320x320 input
-                const modelInputSize = 320;
+                // U²-Net requires square input - use higher resolution for better edge detail
+                const modelInputSize = 512; // Increased from 320 for better hair/finger accuracy
 
                 // Preprocess image for U²-Net
                 const inputTensor = await preprocessImageForU2Net(state.uploadedImage, modelInputSize);
@@ -488,9 +488,9 @@
 
         async function onSegmentationResults(outputTensor, originalImage) {
             try {
-                // U²-Net output is [1, 1, 320, 320] - a single-channel mask
+                // U²-Net output is [1, 1, H, W] - a single-channel mask
                 const maskData = outputTensor.data;
-                const maskSize = 320; // Model output size
+                const maskSize = Math.sqrt(maskData.length); // Auto-detect size (512 or 320)
 
                 // Create canvas for mask
                 const maskCanvas = document.createElement('canvas');
@@ -589,24 +589,48 @@
 
         function processMask(maskData, threshold, feather) {
             const data = maskData.data;
+            const width = maskData.width;
+            const height = maskData.height;
 
-            // First pass: apply threshold
+            // First pass: apply soft threshold with smooth transitions
             for (let i = 0; i < data.length; i += 4) {
-                const alpha = data[i] / 255;
-                data[i + 3] = alpha > threshold ? 255 : 0;
+                const mask = data[i] / 255; // Normalize to [0, 1]
+
+                // Apply guided threshold with smooth transition zone
+                let alpha;
+                if (mask > 0.8) {
+                    // High confidence - fully opaque
+                    alpha = 1.0;
+                } else if (mask < 0.3) {
+                    // Low confidence - fully transparent
+                    alpha = 0.0;
+                } else {
+                    // Transition zone - smooth gradient
+                    alpha = (mask - 0.3) / (0.8 - 0.3);
+                }
+
+                // Apply gamma correction for edge tightening
+                alpha = Math.pow(alpha, 1.2);
+
+                // Remove noise - clear very low confidence pixels
+                if (alpha < 0.05) {
+                    alpha = 0;
+                }
+
+                // Store as soft alpha (0-255)
+                data[i + 3] = Math.round(alpha * 255);
             }
 
-            // Second pass: apply feathering (simple box blur)
+            // Second pass: apply edge feathering (Gaussian-like blur)
             if (feather > 0) {
-                const width = maskData.width;
-                const height = maskData.height;
                 const tempData = new Uint8ClampedArray(data);
 
                 for (let y = 0; y < height; y++) {
                     for (let x = 0; x < width; x++) {
                         let sum = 0;
-                        let count = 0;
+                        let weightSum = 0;
 
+                        // Gaussian-like weighting
                         for (let fy = -feather; fy <= feather; fy++) {
                             for (let fx = -feather; fx <= feather; fx++) {
                                 const nx = x + fx;
@@ -614,14 +638,17 @@
 
                                 if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
                                     const idx = (ny * width + nx) * 4 + 3;
-                                    sum += tempData[idx];
-                                    count++;
+                                    // Gaussian-like weight (approximation)
+                                    const distance = Math.sqrt(fx * fx + fy * fy);
+                                    const weight = Math.exp(-(distance * distance) / (2 * feather * feather));
+                                    sum += tempData[idx] * weight;
+                                    weightSum += weight;
                                 }
                             }
                         }
 
                         const idx = (y * width + x) * 4 + 3;
-                        data[idx] = Math.round(sum / count);
+                        data[idx] = Math.round(sum / weightSum);
                     }
                 }
             }
