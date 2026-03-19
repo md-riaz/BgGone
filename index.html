@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BgGone - Background Remover</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            500: '#667eea',
+                            600: '#5568d3',
+                        },
+                        secondary: {
+                            500: '#764ba2',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom styles for range slider */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+        }
+
+        /* Spinner animation */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .spinner {
+            animation: spin 0.6s linear infinite;
+        }
+
+        /* Checkerboard pattern for transparent background */
+        .checkerboard {
+            background: repeating-conic-gradient(#f0f0f0 0% 25%, white 0% 50%) 50% / 20px 20px;
+        }
+
+        /* Gradient background */
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        /* Button gradient */
+        .btn-gradient {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen p-4 text-gray-800">
+    <div class="max-w-7xl mx-auto">
+        <header class="text-center mb-8 text-white">
+            <h1 class="text-4xl md:text-5xl font-bold mb-2 drop-shadow-md">🎭 BgGone</h1>
+            <p class="text-sm md:text-base opacity-95">Remove backgrounds from your photos instantly - 100% in your browser</p>
+            <div class="bg-white/20 backdrop-blur-md rounded-lg p-3 mt-4 mx-auto max-w-2xl text-sm">
+                ℹ️ Best results on selfies, portraits, and human subjects.
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Upload Zone -->
+            <div class="col-span-full bg-white rounded-xl shadow-lg p-6">
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center cursor-pointer transition-all bg-gray-50 hover:border-primary-500 hover:bg-blue-50" id="dropzone">
+                    <div class="w-16 h-16 mx-auto mb-4 btn-gradient rounded-full flex items-center justify-center text-3xl text-white">📸</div>
+                    <h3 class="mb-2 text-lg font-semibold text-gray-800">Upload Your Photo</h3>
+                    <p class="text-gray-600 text-sm">Click to browse or drag and drop</p>
+                    <p class="mt-2 text-xs text-gray-400">Supports JPG, PNG, WebP</p>
+                </div>
+                <input type="file" id="fileInput" class="hidden" accept="image/jpeg,image/jpg,image/png,image/webp">
+            </div>
+
+            <!-- Controls -->
+            <div class="col-span-full bg-white rounded-xl shadow-lg p-6">
+                <h3 class="mb-4 text-lg font-semibold">⚙️ Settings</h3>
+
+                <div class="mb-6">
+                    <label class="block font-semibold mb-2 text-sm">Quality / Speed</label>
+                    <div class="flex gap-2 flex-wrap">
+                        <button class="px-4 py-2 border-2 border-gray-300 bg-white rounded-md cursor-pointer text-sm transition-all font-medium hover:border-primary-500 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed" data-quality="fast">⚡ Fast</button>
+                        <button class="px-4 py-2 border-2 bg-primary-500 text-white rounded-md cursor-pointer text-sm transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed active" data-quality="balanced">⚖️ Balanced</button>
+                        <button class="px-4 py-2 border-2 border-gray-300 bg-white rounded-md cursor-pointer text-sm transition-all font-medium hover:border-primary-500 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed" data-quality="best">✨ Best</button>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block font-semibold mb-2 text-sm">Preview Background</label>
+                    <div class="flex gap-2 flex-wrap">
+                        <button class="px-4 py-2 border-2 bg-primary-500 text-white rounded-md cursor-pointer text-sm transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed active" data-bg-mode="transparent">🔳 Transparent</button>
+                        <button class="px-4 py-2 border-2 border-gray-300 bg-white rounded-md cursor-pointer text-sm transition-all font-medium hover:border-primary-500 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed" data-bg-mode="color">🎨 Color</button>
+                        <button class="px-4 py-2 border-2 border-gray-300 bg-white rounded-md cursor-pointer text-sm transition-all font-medium hover:border-primary-500 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed" data-bg-mode="blur">🌫️ Blur</button>
+                    </div>
+                </div>
+
+                <div class="mb-6 hidden" id="colorPickerGroup">
+                    <label class="block font-semibold mb-2 text-sm">Background Color</label>
+                    <div class="flex items-center gap-2">
+                        <input type="color" id="bgColor" class="w-15 h-10 border-2 border-gray-300 rounded-md cursor-pointer" value="#ffffff">
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block font-semibold mb-2 text-sm">Mask Threshold</label>
+                    <div class="flex items-center gap-4">
+                        <input type="range" id="threshold" class="flex-1 h-1.5 rounded-sm bg-gray-300 outline-none" min="0" max="100" value="50">
+                        <span class="min-w-[3rem] text-right font-semibold text-primary-500" id="thresholdValue">50</span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-semibold mb-2 text-sm">Edge Smoothing (Feather)</label>
+                    <div class="flex items-center gap-4">
+                        <input type="range" id="feather" class="flex-1 h-1.5 rounded-sm bg-gray-300 outline-none" min="0" max="20" value="2">
+                        <span class="min-w-[3rem] text-right font-semibold text-primary-500" id="featherValue">2</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Original Preview -->
+            <div class="bg-white rounded-xl shadow-lg p-6 relative min-h-[300px]">
+                <h3 class="mb-4 text-lg font-semibold">📷 Original</h3>
+                <div class="relative w-full min-h-[250px] rounded-lg overflow-hidden checkerboard">
+                    <canvas id="originalCanvas" class="w-full h-auto block hidden"></canvas>
+                    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center text-gray-400 pointer-events-none" id="originalEmpty">
+                        <div class="w-20 h-20 mx-auto mb-4 border-3 border-dashed border-gray-300 rounded-full flex items-center justify-center text-4xl">🖼️</div>
+                        <p>No image loaded</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Processed Preview -->
+            <div class="bg-white rounded-xl shadow-lg p-6 relative min-h-[300px]">
+                <h3 class="mb-4 text-lg font-semibold">✨ Result</h3>
+                <div class="relative w-full min-h-[250px] rounded-lg overflow-hidden checkerboard" id="resultContainer">
+                    <canvas id="resultCanvas" class="w-full h-auto block hidden"></canvas>
+                    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center text-gray-400 pointer-events-none" id="resultEmpty">
+                        <div class="w-20 h-20 mx-auto mb-4 border-3 border-dashed border-gray-300 rounded-full flex items-center justify-center text-4xl">✂️</div>
+                        <p>Processing result will appear here</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status -->
+            <div class="col-span-full text-center p-4 rounded-lg font-medium hidden" id="status"></div>
+
+            <!-- Actions -->
+            <div class="col-span-full flex gap-4 flex-wrap justify-center">
+                <button class="btn-gradient text-white px-8 py-3 text-base font-semibold rounded-lg cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0" id="processBtn" disabled>🚀 Remove Background</button>
+                <button class="bg-white text-primary-500 border-2 border-primary-500 px-8 py-3 text-base font-semibold rounded-lg cursor-pointer transition-all hover:bg-primary-500 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed" id="downloadBtn" disabled>💾 Download PNG</button>
+                <button class="bg-white text-primary-500 border-2 border-primary-500 px-8 py-3 text-base font-semibold rounded-lg cursor-pointer transition-all hover:bg-primary-500 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed" id="resetBtn" disabled>🔄 Reset</button>
+            </div>
+        </div>
+
+        <footer class="text-center mt-8 text-white text-sm opacity-90">
+            <p>Powered by MediaPipe • Privacy-first: all processing happens in your browser</p>
+        </footer>
+    </div>
+
+    <!-- MediaPipe CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation"></script>
+
+    <script>
+        // ===== State Management =====
+        const state = {
+            uploadedImage: null,
+            processedImageData: null,
+            segmentationMask: null,
+            isProcessing: false,
+            quality: 'balanced',
+            bgMode: 'transparent',
+            bgColor: '#ffffff',
+            threshold: 0.5,
+            feather: 2
+        };
+
+        // ===== DOM Elements =====
+        const elements = {
+            dropzone: document.getElementById('dropzone'),
+            fileInput: document.getElementById('fileInput'),
+            originalCanvas: document.getElementById('originalCanvas'),
+            resultCanvas: document.getElementById('resultCanvas'),
+            resultContainer: document.getElementById('resultContainer'),
+            originalEmpty: document.getElementById('originalEmpty'),
+            resultEmpty: document.getElementById('resultEmpty'),
+            status: document.getElementById('status'),
+            processBtn: document.getElementById('processBtn'),
+            downloadBtn: document.getElementById('downloadBtn'),
+            resetBtn: document.getElementById('resetBtn'),
+            threshold: document.getElementById('threshold'),
+            thresholdValue: document.getElementById('thresholdValue'),
+            feather: document.getElementById('feather'),
+            featherValue: document.getElementById('featherValue'),
+            bgColor: document.getElementById('bgColor'),
+            colorPickerGroup: document.getElementById('colorPickerGroup')
+        };
+
+        // ===== MediaPipe Setup =====
+        let selfieSegmentation = null;
+
+        function initializeMediaPipe() {
+            selfieSegmentation = new SelfieSegmentation({
+                locateFile: (file) => {
+                    return `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`;
+                }
+            });
+
+            selfieSegmentation.setOptions({
+                modelSelection: 1, // 0 for landscape, 1 for general
+            });
+
+            selfieSegmentation.onResults(onSegmentationResults);
+        }
+
+        // ===== Event Listeners =====
+        elements.dropzone.addEventListener('click', () => {
+            elements.fileInput.click();
+        });
+
+        elements.fileInput.addEventListener('change', handleFileSelect);
+
+        elements.dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            elements.dropzone.classList.add('!border-primary-500', '!bg-blue-50');
+        });
+
+        elements.dropzone.addEventListener('dragleave', () => {
+            elements.dropzone.classList.remove('!border-primary-500', '!bg-blue-50');
+        });
+
+        elements.dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            elements.dropzone.classList.remove('!border-primary-500', '!bg-blue-50');
+
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        elements.processBtn.addEventListener('click', processImage);
+        elements.downloadBtn.addEventListener('click', downloadResult);
+        elements.resetBtn.addEventListener('click', resetApp);
+
+        // Quality buttons
+        document.querySelectorAll('[data-quality]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('[data-quality]').forEach(b => {
+                    b.classList.remove('active', 'bg-primary-500', 'text-white', 'border-primary-500');
+                    b.classList.add('border-gray-300', 'bg-white');
+                });
+                e.target.classList.add('active', 'bg-primary-500', 'text-white', 'border-primary-500');
+                e.target.classList.remove('border-gray-300', 'bg-white');
+                state.quality = e.target.dataset.quality;
+                if (state.uploadedImage && state.segmentationMask) {
+                    applyMaskWithSettings();
+                }
+            });
+        });
+
+        // Background mode buttons
+        document.querySelectorAll('[data-bg-mode]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('[data-bg-mode]').forEach(b => {
+                    b.classList.remove('active', 'bg-primary-500', 'text-white', 'border-primary-500');
+                    b.classList.add('border-gray-300', 'bg-white');
+                });
+                e.target.classList.add('active', 'bg-primary-500', 'text-white', 'border-primary-500');
+                e.target.classList.remove('border-gray-300', 'bg-white');
+                state.bgMode = e.target.dataset.bgMode;
+                elements.colorPickerGroup.classList.toggle('hidden', state.bgMode !== 'color');
+                if (state.segmentationMask) {
+                    applyMaskWithSettings();
+                }
+            });
+        });
+
+        // Threshold slider
+        elements.threshold.addEventListener('input', (e) => {
+            state.threshold = e.target.value / 100;
+            elements.thresholdValue.textContent = e.target.value;
+            if (state.segmentationMask) {
+                debounce(applyMaskWithSettings, 100)();
+            }
+        });
+
+        // Feather slider
+        elements.feather.addEventListener('input', (e) => {
+            state.feather = parseInt(e.target.value);
+            elements.featherValue.textContent = e.target.value;
+            if (state.segmentationMask) {
+                debounce(applyMaskWithSettings, 100)();
+            }
+        });
+
+        // Background color picker
+        elements.bgColor.addEventListener('input', (e) => {
+            state.bgColor = e.target.value;
+            if (state.segmentationMask && state.bgMode === 'color') {
+                applyMaskWithSettings();
+            }
+        });
+
+        // ===== File Handling =====
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        }
+
+        function handleFile(file) {
+            // Validate file type
+            const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+            if (!validTypes.includes(file.type)) {
+                showStatus('error', '❌ Invalid file type. Please upload JPG, PNG, or WebP.');
+                return;
+            }
+
+            // Validate file size (max 20MB)
+            if (file.size > 20 * 1024 * 1024) {
+                showStatus('error', '❌ File too large. Maximum size is 20MB.');
+                return;
+            }
+
+            // Clean up previous object URL if exists
+            if (state.uploadedImage && state.uploadedImage.src.startsWith('blob:')) {
+                URL.revokeObjectURL(state.uploadedImage.src);
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    state.uploadedImage = img;
+                    displayOriginalImage(img);
+                    elements.processBtn.disabled = false;
+                    elements.resetBtn.disabled = false;
+                    showStatus('idle', '✅ Image loaded. Click "Remove Background" to process.');
+                };
+                img.onerror = () => {
+                    showStatus('error', '❌ Failed to load image. Please try another file.');
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // ===== Image Display =====
+        function displayOriginalImage(img) {
+            const canvas = elements.originalCanvas;
+            const ctx = canvas.getContext('2d');
+
+            // Calculate display dimensions (max 600px)
+            const maxDisplaySize = 600;
+            let displayWidth = img.width;
+            let displayHeight = img.height;
+
+            if (displayWidth > maxDisplaySize || displayHeight > maxDisplaySize) {
+                const ratio = Math.min(maxDisplaySize / displayWidth, maxDisplaySize / displayHeight);
+                displayWidth = Math.floor(displayWidth * ratio);
+                displayHeight = Math.floor(displayHeight * ratio);
+            }
+
+            canvas.width = displayWidth;
+            canvas.height = displayHeight;
+            ctx.drawImage(img, 0, 0, displayWidth, displayHeight);
+
+            elements.originalCanvas.classList.remove('hidden');
+            elements.originalEmpty.classList.add('hidden');
+        }
+
+        // ===== Image Processing =====
+        async function processImage() {
+            if (!state.uploadedImage || state.isProcessing) return;
+
+            state.isProcessing = true;
+            elements.processBtn.disabled = true;
+            showStatus('processing', '⏳ Processing image... This may take a moment.');
+
+            try {
+                if (!selfieSegmentation) {
+                    initializeMediaPipe();
+                }
+
+                // Calculate processing dimensions based on quality
+                const processingSize = getProcessingSize();
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+
+                const ratio = Math.min(
+                    processingSize / state.uploadedImage.width,
+                    processingSize / state.uploadedImage.height
+                );
+
+                canvas.width = Math.floor(state.uploadedImage.width * ratio);
+                canvas.height = Math.floor(state.uploadedImage.height * ratio);
+                ctx.drawImage(state.uploadedImage, 0, 0, canvas.width, canvas.height);
+
+                // Run segmentation
+                await selfieSegmentation.send({ image: canvas });
+
+            } catch (error) {
+                console.error('Processing error:', error);
+                showStatus('error', '❌ Processing failed. Please try again.');
+                state.isProcessing = false;
+                elements.processBtn.disabled = false;
+            }
+        }
+
+        function getProcessingSize() {
+            switch (state.quality) {
+                case 'fast': return 512;
+                case 'balanced': return 1024;
+                case 'best': return 2048;
+                default: return 1024;
+            }
+        }
+
+        function onSegmentationResults(results) {
+            if (!results.segmentationMask) {
+                showStatus('error', '❌ Segmentation failed. Please try a different image.');
+                state.isProcessing = false;
+                elements.processBtn.disabled = false;
+                return;
+            }
+
+            state.segmentationMask = results;
+            applyMaskWithSettings();
+
+            state.isProcessing = false;
+            elements.processBtn.disabled = false;
+            elements.downloadBtn.disabled = false;
+            showStatus('success', '✨ Background removed successfully! You can adjust settings or download the result.');
+        }
+
+        function applyMaskWithSettings() {
+            if (!state.segmentationMask || !state.uploadedImage) return;
+
+            requestAnimationFrame(() => {
+                const mask = state.segmentationMask.segmentationMask;
+                const resultCanvas = elements.resultCanvas;
+                const ctx = resultCanvas.getContext('2d');
+
+                // Match original display size
+                resultCanvas.width = elements.originalCanvas.width;
+                resultCanvas.height = elements.originalCanvas.height;
+
+                // Create temporary canvas for mask processing
+                const tempCanvas = document.createElement('canvas');
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCanvas.width = mask.width;
+                tempCanvas.height = mask.height;
+
+                // Get mask data
+                tempCtx.drawImage(mask, 0, 0);
+                const maskData = tempCtx.getImageData(0, 0, mask.width, mask.height);
+
+                // Apply threshold and feathering
+                processMask(maskData, state.threshold, state.feather);
+                tempCtx.putImageData(maskData, 0, 0);
+
+                // Apply background based on mode
+                if (state.bgMode === 'transparent') {
+                    // Transparent background with checkerboard
+                    elements.resultContainer.style.background =
+                        'repeating-conic-gradient(#f0f0f0 0% 25%, white 0% 50%) 50% / 20px 20px';
+                } else if (state.bgMode === 'color') {
+                    // Solid color background
+                    elements.resultContainer.style.background = state.bgColor;
+                    ctx.fillStyle = state.bgColor;
+                    ctx.fillRect(0, 0, resultCanvas.width, resultCanvas.height);
+                } else if (state.bgMode === 'blur') {
+                    // Blurred original background
+                    elements.resultContainer.style.background = 'white';
+                    ctx.filter = 'blur(20px)';
+                    ctx.drawImage(state.uploadedImage, 0, 0, resultCanvas.width, resultCanvas.height);
+                    ctx.filter = 'none';
+                }
+
+                // Composite foreground
+                compositeForeground(ctx, state.uploadedImage, tempCanvas, resultCanvas.width, resultCanvas.height);
+
+                elements.resultCanvas.classList.remove('hidden');
+                elements.resultEmpty.classList.add('hidden');
+            });
+        }
+
+        function processMask(maskData, threshold, feather) {
+            const data = maskData.data;
+
+            // First pass: apply threshold
+            for (let i = 0; i < data.length; i += 4) {
+                const alpha = data[i] / 255;
+                data[i + 3] = alpha > threshold ? 255 : 0;
+            }
+
+            // Second pass: apply feathering (simple box blur)
+            if (feather > 0) {
+                const width = maskData.width;
+                const height = maskData.height;
+                const tempData = new Uint8ClampedArray(data);
+
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < width; x++) {
+                        let sum = 0;
+                        let count = 0;
+
+                        for (let fy = -feather; fy <= feather; fy++) {
+                            for (let fx = -feather; fx <= feather; fx++) {
+                                const nx = x + fx;
+                                const ny = y + fy;
+
+                                if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                                    const idx = (ny * width + nx) * 4 + 3;
+                                    sum += tempData[idx];
+                                    count++;
+                                }
+                            }
+                        }
+
+                        const idx = (y * width + x) * 4 + 3;
+                        data[idx] = Math.round(sum / count);
+                    }
+                }
+            }
+        }
+
+        function compositeForeground(ctx, img, maskCanvas, width, height) {
+            // Draw image
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = width;
+            tempCanvas.height = height;
+            tempCtx.drawImage(img, 0, 0, width, height);
+
+            const imageData = tempCtx.getImageData(0, 0, width, height);
+
+            // Scale mask to match image
+            const scaledMask = document.createElement('canvas');
+            const scaledMaskCtx = scaledMask.getContext('2d');
+            scaledMask.width = width;
+            scaledMask.height = height;
+            scaledMaskCtx.drawImage(maskCanvas, 0, 0, width, height);
+
+            const maskData = scaledMaskCtx.getImageData(0, 0, width, height);
+
+            // Apply mask to image
+            for (let i = 0; i < imageData.data.length; i += 4) {
+                imageData.data[i + 3] = maskData.data[i + 3];
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        // ===== Download =====
+        function downloadResult() {
+            if (!elements.resultCanvas) return;
+
+            // Create a clean transparent version for download
+            const downloadCanvas = document.createElement('canvas');
+            const downloadCtx = downloadCanvas.getContext('2d');
+
+            // Use original image dimensions for best quality
+            downloadCanvas.width = state.uploadedImage.width;
+            downloadCanvas.height = state.uploadedImage.height;
+
+            // Recreate mask at full resolution
+            const mask = state.segmentationMask.segmentationMask;
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = mask.width;
+            tempCanvas.height = mask.height;
+            tempCtx.drawImage(mask, 0, 0);
+
+            const maskData = tempCtx.getImageData(0, 0, mask.width, mask.height);
+            processMask(maskData, state.threshold, state.feather);
+            tempCtx.putImageData(maskData, 0, 0);
+
+            // Composite at full resolution
+            compositeForeground(downloadCtx, state.uploadedImage, tempCanvas, downloadCanvas.width, downloadCanvas.height);
+
+            // Download
+            downloadCanvas.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `bggone-${Date.now()}.png`;
+                a.click();
+                URL.revokeObjectURL(url);
+
+                showStatus('success', '💾 Image downloaded successfully!');
+            }, 'image/png');
+        }
+
+        // ===== Reset =====
+        function resetApp() {
+            // Clean up
+            if (state.uploadedImage && state.uploadedImage.src.startsWith('blob:')) {
+                URL.revokeObjectURL(state.uploadedImage.src);
+            }
+
+            // Reset state
+            state.uploadedImage = null;
+            state.segmentationMask = null;
+            state.processedImageData = null;
+
+            // Reset UI
+            elements.originalCanvas.classList.add('hidden');
+            elements.resultCanvas.classList.add('hidden');
+            elements.originalEmpty.classList.remove('hidden');
+            elements.resultEmpty.classList.remove('hidden');
+            elements.processBtn.disabled = true;
+            elements.downloadBtn.disabled = true;
+            elements.resetBtn.disabled = true;
+            elements.fileInput.value = '';
+            elements.status.classList.add('hidden');
+
+            // Reset background
+            elements.resultContainer.style.background =
+                'repeating-conic-gradient(#f0f0f0 0% 25%, white 0% 50%) 50% / 20px 20px';
+        }
+
+        // ===== Utilities =====
+        function showStatus(type, message) {
+            elements.status.className = 'col-span-full text-center p-4 rounded-lg font-medium';
+
+            const statusClasses = {
+                processing: 'bg-yellow-100 text-yellow-800',
+                success: 'bg-green-100 text-green-800',
+                error: 'bg-red-100 text-red-800',
+                idle: 'bg-blue-100 text-blue-800'
+            };
+
+            elements.status.classList.add(...statusClasses[type].split(' '));
+
+            if (type === 'processing') {
+                elements.status.innerHTML = `<span class="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full spinner mr-2 align-middle"></span>${message}`;
+            } else {
+                elements.status.textContent = message;
+            }
+
+            elements.status.classList.remove('hidden');
+        }
+
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // ===== Initialize =====
+        window.addEventListener('load', () => {
+            initializeMediaPipe();
+        });
+
+        // Clean up on page unload
+        window.addEventListener('beforeunload', () => {
+            if (state.uploadedImage && state.uploadedImage.src.startsWith('blob:')) {
+                URL.revokeObjectURL(state.uploadedImage.src);
+            }
+        });
+    </script>
+</body>
+</html>
