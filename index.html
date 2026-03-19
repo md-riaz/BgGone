@@ -4,193 +4,31 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BgGone - Background Remover</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 1rem;
-            color: #333;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        header {
-            text-align: center;
-            margin-bottom: 2rem;
-            color: white;
-        }
-
-        header h1 {
-            font-size: clamp(1.5rem, 5vw, 2.5rem);
-            margin-bottom: 0.5rem;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-
-        header p {
-            font-size: clamp(0.875rem, 2vw, 1rem);
-            opacity: 0.95;
-        }
-
-        .note {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
-            padding: 0.75rem 1rem;
-            margin: 1rem auto;
-            max-width: 600px;
-            font-size: 0.9rem;
-            text-align: center;
-            backdrop-filter: blur(10px);
-        }
-
-        .main-content {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 1.5rem;
-        }
-
-        @media (min-width: 768px) {
-            .main-content {
-                grid-template-columns: 1fr 1fr;
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            500: '#667eea',
+                            600: '#5568d3',
+                        },
+                        secondary: {
+                            500: '#764ba2',
+                        }
+                    }
+                }
             }
         }
-
-        .card {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            padding: 1.5rem;
-        }
-
-        .upload-zone {
-            grid-column: 1 / -1;
-        }
-
-        .dropzone {
-            border: 2px dashed #ccc;
-            border-radius: 8px;
-            padding: 3rem 1rem;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-            background: #fafafa;
-        }
-
-        .dropzone.dragover {
-            border-color: #667eea;
-            background: #f0f4ff;
-        }
-
-        .dropzone-icon {
-            width: 64px;
-            height: 64px;
-            margin: 0 auto 1rem;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2rem;
-            color: white;
-        }
-
-        .dropzone h3 {
-            margin-bottom: 0.5rem;
-            color: #333;
-        }
-
-        .dropzone p {
-            color: #666;
-            font-size: 0.9rem;
-        }
-
-        .file-input {
-            display: none;
-        }
-
-        .controls {
-            grid-column: 1 / -1;
-        }
-
-        .control-group {
-            margin-bottom: 1.5rem;
-        }
-
-        .control-group:last-child {
-            margin-bottom: 0;
-        }
-
-        .control-label {
-            display: block;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            font-size: 0.9rem;
-        }
-
-        .control-row {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-        }
-
-        .btn-group {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-        }
-
-        .btn {
-            padding: 0.5rem 1rem;
-            border: 2px solid #e0e0e0;
-            background: white;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            transition: all 0.2s;
-            font-weight: 500;
-        }
-
-        .btn:hover:not(:disabled) {
-            border-color: #667eea;
-            background: #f0f4ff;
-        }
-
-        .btn.active {
-            background: #667eea;
-            color: white;
-            border-color: #667eea;
-        }
-
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .slider-container {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .slider {
-            flex: 1;
-            height: 6px;
-            border-radius: 3px;
-            background: #e0e0e0;
-            outline: none;
+    </script>
+    <style>
+        /* Custom styles for range slider */
+        input[type="range"] {
             -webkit-appearance: none;
+            appearance: none;
         }
-
-        .slider::-webkit-slider-thumb {
+        input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
             width: 18px;
@@ -199,8 +37,7 @@
             background: #667eea;
             cursor: pointer;
         }
-
-        .slider::-moz-range-thumb {
+        input[type="range"]::-moz-range-thumb {
             width: 18px;
             height: 18px;
             border-radius: 50%;
@@ -209,289 +46,134 @@
             border: none;
         }
 
-        .slider-value {
-            min-width: 3rem;
-            text-align: right;
-            font-weight: 600;
-            color: #667eea;
-        }
-
-        .color-picker-container {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .color-picker {
-            width: 60px;
-            height: 40px;
-            border: 2px solid #e0e0e0;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-
-        .preview-panel {
-            position: relative;
-            min-height: 300px;
-        }
-
-        .preview-panel h3 {
-            margin-bottom: 1rem;
-            font-size: 1.1rem;
-        }
-
-        .preview-container {
-            position: relative;
-            width: 100%;
-            min-height: 250px;
-            border-radius: 8px;
-            overflow: hidden;
-            background:
-                repeating-conic-gradient(#f0f0f0 0% 25%, white 0% 50%)
-                50% / 20px 20px;
-        }
-
-        .preview-canvas {
-            width: 100%;
-            height: auto;
-            display: block;
-        }
-
-        .empty-state {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            color: #999;
-            pointer-events: none;
-        }
-
-        .empty-state-icon {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto 1rem;
-            border: 3px dashed #ddd;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2.5rem;
-        }
-
-        .status {
-            grid-column: 1 / -1;
-            text-align: center;
-            padding: 1rem;
-            border-radius: 8px;
-            font-weight: 500;
-        }
-
-        .status.processing {
-            background: #fff3cd;
-            color: #856404;
-        }
-
-        .status.success {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .status.error {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        .status.idle {
-            background: #e7f3ff;
-            color: #004085;
-        }
-
-        .spinner {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid rgba(0,0,0,0.1);
-            border-radius: 50%;
-            border-top-color: currentColor;
-            animation: spin 0.6s linear infinite;
-            margin-right: 0.5rem;
-            vertical-align: middle;
-        }
-
+        /* Spinner animation */
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
-
-        .actions {
-            grid-column: 1 / -1;
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-            justify-content: center;
+        .spinner {
+            animation: spin 0.6s linear infinite;
         }
 
-        .btn-primary {
+        /* Checkerboard pattern for transparent background */
+        .checkerboard {
+            background: repeating-conic-gradient(#f0f0f0 0% 25%, white 0% 50%) 50% / 20px 20px;
+        }
+
+        /* Gradient background */
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        /* Button gradient */
+        .btn-gradient {
             background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            border: none;
-            padding: 0.75rem 2rem;
-            font-size: 1rem;
-            font-weight: 600;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .btn-primary:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn-primary:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .btn-secondary {
-            background: white;
-            color: #667eea;
-            border: 2px solid #667eea;
-            padding: 0.75rem 2rem;
-            font-size: 1rem;
-            font-weight: 600;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .btn-secondary:hover:not(:disabled) {
-            background: #667eea;
-            color: white;
-        }
-
-        .btn-secondary:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        footer {
-            text-align: center;
-            margin-top: 2rem;
-            color: white;
-            font-size: 0.9rem;
-            opacity: 0.9;
-        }
-
-        .hidden {
-            display: none !important;
         }
     </style>
 </head>
-<body>
-    <div class="container">
-        <header>
-            <h1>🎭 BgGone</h1>
-            <p>Remove backgrounds from your photos instantly - 100% in your browser</p>
-            <div class="note">
+<body class="gradient-bg min-h-screen p-4 text-gray-800">
+    <div class="max-w-7xl mx-auto">
+        <header class="text-center mb-8 text-white">
+            <h1 class="text-4xl md:text-5xl font-bold mb-2 drop-shadow-md">🎭 BgGone</h1>
+            <p class="text-sm md:text-base opacity-95">Remove backgrounds from your photos instantly - 100% in your browser</p>
+            <div class="bg-white/20 backdrop-blur-md rounded-lg p-3 mt-4 mx-auto max-w-2xl text-sm">
                 ℹ️ Best results on selfies, portraits, and human subjects.
             </div>
         </header>
 
-        <div class="main-content">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <!-- Upload Zone -->
-            <div class="card upload-zone">
-                <div class="dropzone" id="dropzone">
-                    <div class="dropzone-icon">📸</div>
-                    <h3>Upload Your Photo</h3>
-                    <p>Click to browse or drag and drop</p>
-                    <p style="margin-top: 0.5rem; font-size: 0.8rem; color: #999;">Supports JPG, PNG, WebP</p>
+            <div class="col-span-full bg-white rounded-xl shadow-lg p-6">
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center cursor-pointer transition-all bg-gray-50 hover:border-primary-500 hover:bg-blue-50" id="dropzone">
+                    <div class="w-16 h-16 mx-auto mb-4 btn-gradient rounded-full flex items-center justify-center text-3xl text-white">📸</div>
+                    <h3 class="mb-2 text-lg font-semibold text-gray-800">Upload Your Photo</h3>
+                    <p class="text-gray-600 text-sm">Click to browse or drag and drop</p>
+                    <p class="mt-2 text-xs text-gray-400">Supports JPG, PNG, WebP</p>
                 </div>
-                <input type="file" id="fileInput" class="file-input" accept="image/jpeg,image/jpg,image/png,image/webp">
+                <input type="file" id="fileInput" class="hidden" accept="image/jpeg,image/jpg,image/png,image/webp">
             </div>
 
             <!-- Controls -->
-            <div class="card controls">
-                <h3 style="margin-bottom: 1rem;">⚙️ Settings</h3>
+            <div class="col-span-full bg-white rounded-xl shadow-lg p-6">
+                <h3 class="mb-4 text-lg font-semibold">⚙️ Settings</h3>
 
-                <div class="control-group">
-                    <label class="control-label">Quality / Speed</label>
-                    <div class="btn-group">
-                        <button class="btn" data-quality="fast">⚡ Fast</button>
-                        <button class="btn active" data-quality="balanced">⚖️ Balanced</button>
-                        <button class="btn" data-quality="best">✨ Best</button>
+                <div class="mb-6">
+                    <label class="block font-semibold mb-2 text-sm">Quality / Speed</label>
+                    <div class="flex gap-2 flex-wrap">
+                        <button class="px-4 py-2 border-2 border-gray-300 bg-white rounded-md cursor-pointer text-sm transition-all font-medium hover:border-primary-500 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed" data-quality="fast">⚡ Fast</button>
+                        <button class="px-4 py-2 border-2 bg-primary-500 text-white rounded-md cursor-pointer text-sm transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed active" data-quality="balanced">⚖️ Balanced</button>
+                        <button class="px-4 py-2 border-2 border-gray-300 bg-white rounded-md cursor-pointer text-sm transition-all font-medium hover:border-primary-500 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed" data-quality="best">✨ Best</button>
                     </div>
                 </div>
 
-                <div class="control-group">
-                    <label class="control-label">Preview Background</label>
-                    <div class="btn-group">
-                        <button class="btn active" data-bg-mode="transparent">🔳 Transparent</button>
-                        <button class="btn" data-bg-mode="color">🎨 Color</button>
-                        <button class="btn" data-bg-mode="blur">🌫️ Blur</button>
+                <div class="mb-6">
+                    <label class="block font-semibold mb-2 text-sm">Preview Background</label>
+                    <div class="flex gap-2 flex-wrap">
+                        <button class="px-4 py-2 border-2 bg-primary-500 text-white rounded-md cursor-pointer text-sm transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed active" data-bg-mode="transparent">🔳 Transparent</button>
+                        <button class="px-4 py-2 border-2 border-gray-300 bg-white rounded-md cursor-pointer text-sm transition-all font-medium hover:border-primary-500 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed" data-bg-mode="color">🎨 Color</button>
+                        <button class="px-4 py-2 border-2 border-gray-300 bg-white rounded-md cursor-pointer text-sm transition-all font-medium hover:border-primary-500 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed" data-bg-mode="blur">🌫️ Blur</button>
                     </div>
                 </div>
 
-                <div class="control-group" id="colorPickerGroup" style="display: none;">
-                    <label class="control-label">Background Color</label>
-                    <div class="color-picker-container">
-                        <input type="color" id="bgColor" class="color-picker" value="#ffffff">
+                <div class="mb-6 hidden" id="colorPickerGroup">
+                    <label class="block font-semibold mb-2 text-sm">Background Color</label>
+                    <div class="flex items-center gap-2">
+                        <input type="color" id="bgColor" class="w-15 h-10 border-2 border-gray-300 rounded-md cursor-pointer" value="#ffffff">
                     </div>
                 </div>
 
-                <div class="control-group">
-                    <label class="control-label">Mask Threshold</label>
-                    <div class="slider-container">
-                        <input type="range" id="threshold" class="slider" min="0" max="100" value="50">
-                        <span class="slider-value" id="thresholdValue">50</span>
+                <div class="mb-6">
+                    <label class="block font-semibold mb-2 text-sm">Mask Threshold</label>
+                    <div class="flex items-center gap-4">
+                        <input type="range" id="threshold" class="flex-1 h-1.5 rounded-sm bg-gray-300 outline-none" min="0" max="100" value="50">
+                        <span class="min-w-[3rem] text-right font-semibold text-primary-500" id="thresholdValue">50</span>
                     </div>
                 </div>
 
-                <div class="control-group">
-                    <label class="control-label">Edge Smoothing (Feather)</label>
-                    <div class="slider-container">
-                        <input type="range" id="feather" class="slider" min="0" max="20" value="2">
-                        <span class="slider-value" id="featherValue">2</span>
+                <div>
+                    <label class="block font-semibold mb-2 text-sm">Edge Smoothing (Feather)</label>
+                    <div class="flex items-center gap-4">
+                        <input type="range" id="feather" class="flex-1 h-1.5 rounded-sm bg-gray-300 outline-none" min="0" max="20" value="2">
+                        <span class="min-w-[3rem] text-right font-semibold text-primary-500" id="featherValue">2</span>
                     </div>
                 </div>
             </div>
 
             <!-- Original Preview -->
-            <div class="card preview-panel">
-                <h3>📷 Original</h3>
-                <div class="preview-container">
-                    <canvas id="originalCanvas" class="preview-canvas hidden"></canvas>
-                    <div class="empty-state" id="originalEmpty">
-                        <div class="empty-state-icon">🖼️</div>
+            <div class="bg-white rounded-xl shadow-lg p-6 relative min-h-[300px]">
+                <h3 class="mb-4 text-lg font-semibold">📷 Original</h3>
+                <div class="relative w-full min-h-[250px] rounded-lg overflow-hidden checkerboard">
+                    <canvas id="originalCanvas" class="w-full h-auto block hidden"></canvas>
+                    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center text-gray-400 pointer-events-none" id="originalEmpty">
+                        <div class="w-20 h-20 mx-auto mb-4 border-3 border-dashed border-gray-300 rounded-full flex items-center justify-center text-4xl">🖼️</div>
                         <p>No image loaded</p>
                     </div>
                 </div>
             </div>
 
             <!-- Processed Preview -->
-            <div class="card preview-panel">
-                <h3>✨ Result</h3>
-                <div class="preview-container" id="resultContainer">
-                    <canvas id="resultCanvas" class="preview-canvas hidden"></canvas>
-                    <div class="empty-state" id="resultEmpty">
-                        <div class="empty-state-icon">✂️</div>
+            <div class="bg-white rounded-xl shadow-lg p-6 relative min-h-[300px]">
+                <h3 class="mb-4 text-lg font-semibold">✨ Result</h3>
+                <div class="relative w-full min-h-[250px] rounded-lg overflow-hidden checkerboard" id="resultContainer">
+                    <canvas id="resultCanvas" class="w-full h-auto block hidden"></canvas>
+                    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center text-gray-400 pointer-events-none" id="resultEmpty">
+                        <div class="w-20 h-20 mx-auto mb-4 border-3 border-dashed border-gray-300 rounded-full flex items-center justify-center text-4xl">✂️</div>
                         <p>Processing result will appear here</p>
                     </div>
                 </div>
             </div>
 
             <!-- Status -->
-            <div class="status idle hidden" id="status"></div>
+            <div class="col-span-full text-center p-4 rounded-lg font-medium hidden" id="status"></div>
 
             <!-- Actions -->
-            <div class="actions">
-                <button class="btn-primary" id="processBtn" disabled>🚀 Remove Background</button>
-                <button class="btn-secondary" id="downloadBtn" disabled>💾 Download PNG</button>
-                <button class="btn-secondary" id="resetBtn" disabled>🔄 Reset</button>
+            <div class="col-span-full flex gap-4 flex-wrap justify-center">
+                <button class="btn-gradient text-white px-8 py-3 text-base font-semibold rounded-lg cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0" id="processBtn" disabled>🚀 Remove Background</button>
+                <button class="bg-white text-primary-500 border-2 border-primary-500 px-8 py-3 text-base font-semibold rounded-lg cursor-pointer transition-all hover:bg-primary-500 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed" id="downloadBtn" disabled>💾 Download PNG</button>
+                <button class="bg-white text-primary-500 border-2 border-primary-500 px-8 py-3 text-base font-semibold rounded-lg cursor-pointer transition-all hover:bg-primary-500 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed" id="resetBtn" disabled>🔄 Reset</button>
             </div>
         </div>
 
-        <footer>
+        <footer class="text-center mt-8 text-white text-sm opacity-90">
             <p>Powered by MediaPipe • Privacy-first: all processing happens in your browser</p>
         </footer>
     </div>
@@ -560,16 +242,16 @@
 
         elements.dropzone.addEventListener('dragover', (e) => {
             e.preventDefault();
-            elements.dropzone.classList.add('dragover');
+            elements.dropzone.classList.add('!border-primary-500', '!bg-blue-50');
         });
 
         elements.dropzone.addEventListener('dragleave', () => {
-            elements.dropzone.classList.remove('dragover');
+            elements.dropzone.classList.remove('!border-primary-500', '!bg-blue-50');
         });
 
         elements.dropzone.addEventListener('drop', (e) => {
             e.preventDefault();
-            elements.dropzone.classList.remove('dragover');
+            elements.dropzone.classList.remove('!border-primary-500', '!bg-blue-50');
 
             const files = e.dataTransfer.files;
             if (files.length > 0) {
@@ -584,8 +266,12 @@
         // Quality buttons
         document.querySelectorAll('[data-quality]').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                document.querySelectorAll('[data-quality]').forEach(b => b.classList.remove('active'));
-                e.target.classList.add('active');
+                document.querySelectorAll('[data-quality]').forEach(b => {
+                    b.classList.remove('active', 'bg-primary-500', 'text-white', 'border-primary-500');
+                    b.classList.add('border-gray-300', 'bg-white');
+                });
+                e.target.classList.add('active', 'bg-primary-500', 'text-white', 'border-primary-500');
+                e.target.classList.remove('border-gray-300', 'bg-white');
                 state.quality = e.target.dataset.quality;
                 if (state.uploadedImage && state.segmentationMask) {
                     applyMaskWithSettings();
@@ -596,10 +282,14 @@
         // Background mode buttons
         document.querySelectorAll('[data-bg-mode]').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                document.querySelectorAll('[data-bg-mode]').forEach(b => b.classList.remove('active'));
-                e.target.classList.add('active');
+                document.querySelectorAll('[data-bg-mode]').forEach(b => {
+                    b.classList.remove('active', 'bg-primary-500', 'text-white', 'border-primary-500');
+                    b.classList.add('border-gray-300', 'bg-white');
+                });
+                e.target.classList.add('active', 'bg-primary-500', 'text-white', 'border-primary-500');
+                e.target.classList.remove('border-gray-300', 'bg-white');
                 state.bgMode = e.target.dataset.bgMode;
-                elements.colorPickerGroup.style.display = state.bgMode === 'color' ? 'block' : 'none';
+                elements.colorPickerGroup.classList.toggle('hidden', state.bgMode !== 'color');
                 if (state.segmentationMask) {
                     applyMaskWithSettings();
                 }
@@ -954,10 +644,19 @@
 
         // ===== Utilities =====
         function showStatus(type, message) {
-            elements.status.className = `status ${type}`;
+            elements.status.className = 'col-span-full text-center p-4 rounded-lg font-medium';
+
+            const statusClasses = {
+                processing: 'bg-yellow-100 text-yellow-800',
+                success: 'bg-green-100 text-green-800',
+                error: 'bg-red-100 text-red-800',
+                idle: 'bg-blue-100 text-blue-800'
+            };
+
+            elements.status.classList.add(...statusClasses[type].split(' '));
 
             if (type === 'processing') {
-                elements.status.innerHTML = `<span class="spinner"></span>${message}`;
+                elements.status.innerHTML = `<span class="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full spinner mr-2 align-middle"></span>${message}`;
             } else {
                 elements.status.textContent = message;
             }
