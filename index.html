@@ -419,10 +419,8 @@
                 }
 
                 // Calculate processing dimensions based on quality
-                const processingSize = getProcessingSize();
-
-                // U²-Net requires square input - use higher resolution for better edge detail
-                const modelInputSize = 512; // Increased from 320 for better hair/finger accuracy
+                // Fast: 512px, Balanced: 1024px, Best: 2048px
+                const modelInputSize = getProcessingSize();
 
                 // Preprocess image for U²-Net
                 const inputTensor = await preprocessImageForU2Net(state.uploadedImage, modelInputSize);
