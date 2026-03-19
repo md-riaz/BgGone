@@ -165,6 +165,11 @@
             <!-- Status -->
             <div class="col-span-full text-center p-4 rounded-lg font-medium hidden" id="status"></div>
 
+            <!-- Retry Button (shown only on model load failure) -->
+            <div class="col-span-full text-center hidden" id="retryModelContainer">
+                <button class="bg-primary-500 text-white px-6 py-3 text-base font-semibold rounded-lg cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-lg" id="retryModelBtn">🔄 Retry Loading Model</button>
+            </div>
+
             <!-- Actions -->
             <div class="col-span-full flex gap-4 flex-wrap justify-center">
                 <button class="btn-gradient text-white px-8 py-3 text-base font-semibold rounded-lg cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0" id="processBtn" disabled>🚀 Remove Background</button>
@@ -213,15 +218,20 @@
             feather: document.getElementById('feather'),
             featherValue: document.getElementById('featherValue'),
             bgColor: document.getElementById('bgColor'),
-            colorPickerGroup: document.getElementById('colorPickerGroup')
+            colorPickerGroup: document.getElementById('colorPickerGroup'),
+            retryModelContainer: document.getElementById('retryModelContainer'),
+            retryModelBtn: document.getElementById('retryModelBtn')
         };
 
         // ===== ONNX Runtime Setup =====
         let onnxSession = null;
         const U2NET_MODEL_URL = 'https://huggingface.co/schmuell/u2net-onnx/resolve/main/u2net.onnx';
 
-        async function initializeONNX() {
+        async function initializeONNX(retryCount = 0) {
             try {
+                // Hide retry button when attempting to load
+                elements.retryModelContainer.classList.add('hidden');
+
                 // Configure ONNX Runtime to use WASM backend
                 ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/';
 
@@ -243,7 +253,36 @@
                 }, 3000);
             } catch (error) {
                 console.error('Failed to load U²-Net model:', error);
-                showStatus('error', '❌ Failed to load model. Please refresh the page.');
+
+                // Provide more detailed error messages
+                let errorMessage = '❌ Failed to load model. ';
+
+                if (!navigator.onLine) {
+                    errorMessage += 'No internet connection detected.';
+                } else if (error.message && error.message.includes('fetch')) {
+                    errorMessage += 'Network error. Please check your connection.';
+                } else if (error.message && error.message.includes('WASM')) {
+                    errorMessage += 'WebAssembly initialization failed. Your browser may not support WASM.';
+                } else if (error.message && error.message.includes('memory')) {
+                    errorMessage += 'Insufficient memory. Try closing other tabs.';
+                } else {
+                    errorMessage += 'An unexpected error occurred.';
+                }
+
+                showStatus('error', errorMessage);
+
+                // Show retry button
+                elements.retryModelContainer.classList.remove('hidden');
+
+                // Automatic retry for network errors (max 2 retries)
+                if (retryCount < 2 && (error.message?.includes('fetch') || error.message?.includes('network'))) {
+                    const delay = (retryCount + 1) * 2000; // 2s, 4s
+                    console.log(`Retrying in ${delay}ms... (attempt ${retryCount + 1}/2)`);
+                    setTimeout(() => {
+                        showStatus('processing', `⏳ Retrying model load (attempt ${retryCount + 2}/3)...`);
+                        initializeONNX(retryCount + 1);
+                    }, delay);
+                }
             }
         }
 
@@ -276,6 +315,7 @@
         elements.processBtn.addEventListener('click', processImage);
         elements.downloadBtn.addEventListener('click', downloadResult);
         elements.resetBtn.addEventListener('click', resetApp);
+        elements.retryModelBtn.addEventListener('click', () => initializeONNX());
 
         // Quality buttons
         document.querySelectorAll('[data-quality]').forEach(btn => {
@@ -415,7 +455,16 @@
 
             try {
                 if (!onnxSession) {
+                    showStatus('processing', '⏳ Model not loaded yet. Initializing...');
                     await initializeONNX();
+
+                    // Check if model loaded successfully after initialization
+                    if (!onnxSession) {
+                        showStatus('error', '❌ Cannot process image. Model failed to load.');
+                        state.isProcessing = false;
+                        elements.processBtn.disabled = false;
+                        return;
+                    }
                 }
 
                 // Calculate processing dimensions based on quality
