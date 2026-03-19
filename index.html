@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BgGone - Background Remover</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 1rem;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+            color: white;
+        }
+
+        header h1 {
+            font-size: clamp(1.5rem, 5vw, 2.5rem);
+            margin-bottom: 0.5rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        header p {
+            font-size: clamp(0.875rem, 2vw, 1rem);
+            opacity: 0.95;
+        }
+
+        .note {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            margin: 1rem auto;
+            max-width: 600px;
+            font-size: 0.9rem;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (min-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 1.5rem;
+        }
+
+        .upload-zone {
+            grid-column: 1 / -1;
+        }
+
+        .dropzone {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 3rem 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #fafafa;
+        }
+
+        .dropzone.dragover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .dropzone-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 1rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: white;
+        }
+
+        .dropzone h3 {
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+
+        .dropzone p {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .controls {
+            grid-column: 1 / -1;
+        }
+
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .control-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .control-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .control-row {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .btn:hover:not(:disabled) {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .slider {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            background: #e0e0e0;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+
+        .slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+        }
+
+        .slider-value {
+            min-width: 3rem;
+            text-align: right;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .color-picker-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .color-picker {
+            width: 60px;
+            height: 40px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .preview-panel {
+            position: relative;
+            min-height: 300px;
+        }
+
+        .preview-panel h3 {
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        .preview-container {
+            position: relative;
+            width: 100%;
+            min-height: 250px;
+            border-radius: 8px;
+            overflow: hidden;
+            background:
+                repeating-conic-gradient(#f0f0f0 0% 25%, white 0% 50%)
+                50% / 20px 20px;
+        }
+
+        .preview-canvas {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .empty-state {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #999;
+            pointer-events: none;
+        }
+
+        .empty-state-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 1rem;
+            border: 3px dashed #ddd;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+        }
+
+        .status {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 1rem;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+
+        .status.processing {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status.idle {
+            background: #e7f3ff;
+            color: #004085;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(0,0,0,0.1);
+            border-radius: 50%;
+            border-top-color: currentColor;
+            animation: spin 0.6s linear infinite;
+            margin-right: 0.5rem;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .actions {
+            grid-column: 1 / -1;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 0.75rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+            padding: 0.75rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-secondary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 2rem;
+            color: white;
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎭 BgGone</h1>
+            <p>Remove backgrounds from your photos instantly - 100% in your browser</p>
+            <div class="note">
+                ℹ️ Best results on selfies, portraits, and human subjects.
+            </div>
+        </header>
+
+        <div class="main-content">
+            <!-- Upload Zone -->
+            <div class="card upload-zone">
+                <div class="dropzone" id="dropzone">
+                    <div class="dropzone-icon">📸</div>
+                    <h3>Upload Your Photo</h3>
+                    <p>Click to browse or drag and drop</p>
+                    <p style="margin-top: 0.5rem; font-size: 0.8rem; color: #999;">Supports JPG, PNG, WebP</p>
+                </div>
+                <input type="file" id="fileInput" class="file-input" accept="image/jpeg,image/jpg,image/png,image/webp">
+            </div>
+
+            <!-- Controls -->
+            <div class="card controls">
+                <h3 style="margin-bottom: 1rem;">⚙️ Settings</h3>
+
+                <div class="control-group">
+                    <label class="control-label">Quality / Speed</label>
+                    <div class="btn-group">
+                        <button class="btn" data-quality="fast">⚡ Fast</button>
+                        <button class="btn active" data-quality="balanced">⚖️ Balanced</button>
+                        <button class="btn" data-quality="best">✨ Best</button>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Preview Background</label>
+                    <div class="btn-group">
+                        <button class="btn active" data-bg-mode="transparent">🔳 Transparent</button>
+                        <button class="btn" data-bg-mode="color">🎨 Color</button>
+                        <button class="btn" data-bg-mode="blur">🌫️ Blur</button>
+                    </div>
+                </div>
+
+                <div class="control-group" id="colorPickerGroup" style="display: none;">
+                    <label class="control-label">Background Color</label>
+                    <div class="color-picker-container">
+                        <input type="color" id="bgColor" class="color-picker" value="#ffffff">
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Mask Threshold</label>
+                    <div class="slider-container">
+                        <input type="range" id="threshold" class="slider" min="0" max="100" value="50">
+                        <span class="slider-value" id="thresholdValue">50</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Edge Smoothing (Feather)</label>
+                    <div class="slider-container">
+                        <input type="range" id="feather" class="slider" min="0" max="20" value="2">
+                        <span class="slider-value" id="featherValue">2</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Original Preview -->
+            <div class="card preview-panel">
+                <h3>📷 Original</h3>
+                <div class="preview-container">
+                    <canvas id="originalCanvas" class="preview-canvas hidden"></canvas>
+                    <div class="empty-state" id="originalEmpty">
+                        <div class="empty-state-icon">🖼️</div>
+                        <p>No image loaded</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Processed Preview -->
+            <div class="card preview-panel">
+                <h3>✨ Result</h3>
+                <div class="preview-container" id="resultContainer">
+                    <canvas id="resultCanvas" class="preview-canvas hidden"></canvas>
+                    <div class="empty-state" id="resultEmpty">
+                        <div class="empty-state-icon">✂️</div>
+                        <p>Processing result will appear here</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status -->
+            <div class="status idle hidden" id="status"></div>
+
+            <!-- Actions -->
+            <div class="actions">
+                <button class="btn-primary" id="processBtn" disabled>🚀 Remove Background</button>
+                <button class="btn-secondary" id="downloadBtn" disabled>💾 Download PNG</button>
+                <button class="btn-secondary" id="resetBtn" disabled>🔄 Reset</button>
+            </div>
+        </div>
+
+        <footer>
+            <p>Powered by MediaPipe • Privacy-first: all processing happens in your browser</p>
+        </footer>
+    </div>
+
+    <!-- MediaPipe CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation"></script>
+
+    <script>
+        // ===== State Management =====
+        const state = {
+            uploadedImage: null,
+            processedImageData: null,
+            segmentationMask: null,
+            isProcessing: false,
+            quality: 'balanced',
+            bgMode: 'transparent',
+            bgColor: '#ffffff',
+            threshold: 0.5,
+            feather: 2
+        };
+
+        // ===== DOM Elements =====
+        const elements = {
+            dropzone: document.getElementById('dropzone'),
+            fileInput: document.getElementById('fileInput'),
+            originalCanvas: document.getElementById('originalCanvas'),
+            resultCanvas: document.getElementById('resultCanvas'),
+            resultContainer: document.getElementById('resultContainer'),
+            originalEmpty: document.getElementById('originalEmpty'),
+            resultEmpty: document.getElementById('resultEmpty'),
+            status: document.getElementById('status'),
+            processBtn: document.getElementById('processBtn'),
+            downloadBtn: document.getElementById('downloadBtn'),
+            resetBtn: document.getElementById('resetBtn'),
+            threshold: document.getElementById('threshold'),
+            thresholdValue: document.getElementById('thresholdValue'),
+            feather: document.getElementById('feather'),
+            featherValue: document.getElementById('featherValue'),
+            bgColor: document.getElementById('bgColor'),
+            colorPickerGroup: document.getElementById('colorPickerGroup')
+        };
+
+        // ===== MediaPipe Setup =====
+        let selfieSegmentation = null;
+
+        function initializeMediaPipe() {
+            selfieSegmentation = new SelfieSegmentation({
+                locateFile: (file) => {
+                    return `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`;
+                }
+            });
+
+            selfieSegmentation.setOptions({
+                modelSelection: 1, // 0 for landscape, 1 for general
+            });
+
+            selfieSegmentation.onResults(onSegmentationResults);
+        }
+
+        // ===== Event Listeners =====
+        elements.dropzone.addEventListener('click', () => {
+            elements.fileInput.click();
+        });
+
+        elements.fileInput.addEventListener('change', handleFileSelect);
+
+        elements.dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            elements.dropzone.classList.add('dragover');
+        });
+
+        elements.dropzone.addEventListener('dragleave', () => {
+            elements.dropzone.classList.remove('dragover');
+        });
+
+        elements.dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            elements.dropzone.classList.remove('dragover');
+
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        elements.processBtn.addEventListener('click', processImage);
+        elements.downloadBtn.addEventListener('click', downloadResult);
+        elements.resetBtn.addEventListener('click', resetApp);
+
+        // Quality buttons
+        document.querySelectorAll('[data-quality]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('[data-quality]').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                state.quality = e.target.dataset.quality;
+                if (state.uploadedImage && state.segmentationMask) {
+                    applyMaskWithSettings();
+                }
+            });
+        });
+
+        // Background mode buttons
+        document.querySelectorAll('[data-bg-mode]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('[data-bg-mode]').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                state.bgMode = e.target.dataset.bgMode;
+                elements.colorPickerGroup.style.display = state.bgMode === 'color' ? 'block' : 'none';
+                if (state.segmentationMask) {
+                    applyMaskWithSettings();
+                }
+            });
+        });
+
+        // Threshold slider
+        elements.threshold.addEventListener('input', (e) => {
+            state.threshold = e.target.value / 100;
+            elements.thresholdValue.textContent = e.target.value;
+            if (state.segmentationMask) {
+                debounce(applyMaskWithSettings, 100)();
+            }
+        });
+
+        // Feather slider
+        elements.feather.addEventListener('input', (e) => {
+            state.feather = parseInt(e.target.value);
+            elements.featherValue.textContent = e.target.value;
+            if (state.segmentationMask) {
+                debounce(applyMaskWithSettings, 100)();
+            }
+        });
+
+        // Background color picker
+        elements.bgColor.addEventListener('input', (e) => {
+            state.bgColor = e.target.value;
+            if (state.segmentationMask && state.bgMode === 'color') {
+                applyMaskWithSettings();
+            }
+        });
+
+        // ===== File Handling =====
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        }
+
+        function handleFile(file) {
+            // Validate file type
+            const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+            if (!validTypes.includes(file.type)) {
+                showStatus('error', '❌ Invalid file type. Please upload JPG, PNG, or WebP.');
+                return;
+            }
+
+            // Validate file size (max 20MB)
+            if (file.size > 20 * 1024 * 1024) {
+                showStatus('error', '❌ File too large. Maximum size is 20MB.');
+                return;
+            }
+
+            // Clean up previous object URL if exists
+            if (state.uploadedImage && state.uploadedImage.src.startsWith('blob:')) {
+                URL.revokeObjectURL(state.uploadedImage.src);
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    state.uploadedImage = img;
+                    displayOriginalImage(img);
+                    elements.processBtn.disabled = false;
+                    elements.resetBtn.disabled = false;
+                    showStatus('idle', '✅ Image loaded. Click "Remove Background" to process.');
+                };
+                img.onerror = () => {
+                    showStatus('error', '❌ Failed to load image. Please try another file.');
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // ===== Image Display =====
+        function displayOriginalImage(img) {
+            const canvas = elements.originalCanvas;
+            const ctx = canvas.getContext('2d');
+
+            // Calculate display dimensions (max 600px)
+            const maxDisplaySize = 600;
+            let displayWidth = img.width;
+            let displayHeight = img.height;
+
+            if (displayWidth > maxDisplaySize || displayHeight > maxDisplaySize) {
+                const ratio = Math.min(maxDisplaySize / displayWidth, maxDisplaySize / displayHeight);
+                displayWidth = Math.floor(displayWidth * ratio);
+                displayHeight = Math.floor(displayHeight * ratio);
+            }
+
+            canvas.width = displayWidth;
+            canvas.height = displayHeight;
+            ctx.drawImage(img, 0, 0, displayWidth, displayHeight);
+
+            elements.originalCanvas.classList.remove('hidden');
+            elements.originalEmpty.classList.add('hidden');
+        }
+
+        // ===== Image Processing =====
+        async function processImage() {
+            if (!state.uploadedImage || state.isProcessing) return;
+
+            state.isProcessing = true;
+            elements.processBtn.disabled = true;
+            showStatus('processing', '⏳ Processing image... This may take a moment.');
+
+            try {
+                if (!selfieSegmentation) {
+                    initializeMediaPipe();
+                }
+
+                // Calculate processing dimensions based on quality
+                const processingSize = getProcessingSize();
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+
+                const ratio = Math.min(
+                    processingSize / state.uploadedImage.width,
+                    processingSize / state.uploadedImage.height
+                );
+
+                canvas.width = Math.floor(state.uploadedImage.width * ratio);
+                canvas.height = Math.floor(state.uploadedImage.height * ratio);
+                ctx.drawImage(state.uploadedImage, 0, 0, canvas.width, canvas.height);
+
+                // Run segmentation
+                await selfieSegmentation.send({ image: canvas });
+
+            } catch (error) {
+                console.error('Processing error:', error);
+                showStatus('error', '❌ Processing failed. Please try again.');
+                state.isProcessing = false;
+                elements.processBtn.disabled = false;
+            }
+        }
+
+        function getProcessingSize() {
+            switch (state.quality) {
+                case 'fast': return 512;
+                case 'balanced': return 1024;
+                case 'best': return 2048;
+                default: return 1024;
+            }
+        }
+
+        function onSegmentationResults(results) {
+            if (!results.segmentationMask) {
+                showStatus('error', '❌ Segmentation failed. Please try a different image.');
+                state.isProcessing = false;
+                elements.processBtn.disabled = false;
+                return;
+            }
+
+            state.segmentationMask = results;
+            applyMaskWithSettings();
+
+            state.isProcessing = false;
+            elements.processBtn.disabled = false;
+            elements.downloadBtn.disabled = false;
+            showStatus('success', '✨ Background removed successfully! You can adjust settings or download the result.');
+        }
+
+        function applyMaskWithSettings() {
+            if (!state.segmentationMask || !state.uploadedImage) return;
+
+            requestAnimationFrame(() => {
+                const mask = state.segmentationMask.segmentationMask;
+                const resultCanvas = elements.resultCanvas;
+                const ctx = resultCanvas.getContext('2d');
+
+                // Match original display size
+                resultCanvas.width = elements.originalCanvas.width;
+                resultCanvas.height = elements.originalCanvas.height;
+
+                // Create temporary canvas for mask processing
+                const tempCanvas = document.createElement('canvas');
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCanvas.width = mask.width;
+                tempCanvas.height = mask.height;
+
+                // Get mask data
+                tempCtx.drawImage(mask, 0, 0);
+                const maskData = tempCtx.getImageData(0, 0, mask.width, mask.height);
+
+                // Apply threshold and feathering
+                processMask(maskData, state.threshold, state.feather);
+                tempCtx.putImageData(maskData, 0, 0);
+
+                // Apply background based on mode
+                if (state.bgMode === 'transparent') {
+                    // Transparent background with checkerboard
+                    elements.resultContainer.style.background =
+                        'repeating-conic-gradient(#f0f0f0 0% 25%, white 0% 50%) 50% / 20px 20px';
+                } else if (state.bgMode === 'color') {
+                    // Solid color background
+                    elements.resultContainer.style.background = state.bgColor;
+                    ctx.fillStyle = state.bgColor;
+                    ctx.fillRect(0, 0, resultCanvas.width, resultCanvas.height);
+                } else if (state.bgMode === 'blur') {
+                    // Blurred original background
+                    elements.resultContainer.style.background = 'white';
+                    ctx.filter = 'blur(20px)';
+                    ctx.drawImage(state.uploadedImage, 0, 0, resultCanvas.width, resultCanvas.height);
+                    ctx.filter = 'none';
+                }
+
+                // Composite foreground
+                compositeForeground(ctx, state.uploadedImage, tempCanvas, resultCanvas.width, resultCanvas.height);
+
+                elements.resultCanvas.classList.remove('hidden');
+                elements.resultEmpty.classList.add('hidden');
+            });
+        }
+
+        function processMask(maskData, threshold, feather) {
+            const data = maskData.data;
+
+            // First pass: apply threshold
+            for (let i = 0; i < data.length; i += 4) {
+                const alpha = data[i] / 255;
+                data[i + 3] = alpha > threshold ? 255 : 0;
+            }
+
+            // Second pass: apply feathering (simple box blur)
+            if (feather > 0) {
+                const width = maskData.width;
+                const height = maskData.height;
+                const tempData = new Uint8ClampedArray(data);
+
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < width; x++) {
+                        let sum = 0;
+                        let count = 0;
+
+                        for (let fy = -feather; fy <= feather; fy++) {
+                            for (let fx = -feather; fx <= feather; fx++) {
+                                const nx = x + fx;
+                                const ny = y + fy;
+
+                                if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                                    const idx = (ny * width + nx) * 4 + 3;
+                                    sum += tempData[idx];
+                                    count++;
+                                }
+                            }
+                        }
+
+                        const idx = (y * width + x) * 4 + 3;
+                        data[idx] = Math.round(sum / count);
+                    }
+                }
+            }
+        }
+
+        function compositeForeground(ctx, img, maskCanvas, width, height) {
+            // Draw image
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = width;
+            tempCanvas.height = height;
+            tempCtx.drawImage(img, 0, 0, width, height);
+
+            const imageData = tempCtx.getImageData(0, 0, width, height);
+
+            // Scale mask to match image
+            const scaledMask = document.createElement('canvas');
+            const scaledMaskCtx = scaledMask.getContext('2d');
+            scaledMask.width = width;
+            scaledMask.height = height;
+            scaledMaskCtx.drawImage(maskCanvas, 0, 0, width, height);
+
+            const maskData = scaledMaskCtx.getImageData(0, 0, width, height);
+
+            // Apply mask to image
+            for (let i = 0; i < imageData.data.length; i += 4) {
+                imageData.data[i + 3] = maskData.data[i + 3];
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        // ===== Download =====
+        function downloadResult() {
+            if (!elements.resultCanvas) return;
+
+            // Create a clean transparent version for download
+            const downloadCanvas = document.createElement('canvas');
+            const downloadCtx = downloadCanvas.getContext('2d');
+
+            // Use original image dimensions for best quality
+            downloadCanvas.width = state.uploadedImage.width;
+            downloadCanvas.height = state.uploadedImage.height;
+
+            // Recreate mask at full resolution
+            const mask = state.segmentationMask.segmentationMask;
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = mask.width;
+            tempCanvas.height = mask.height;
+            tempCtx.drawImage(mask, 0, 0);
+
+            const maskData = tempCtx.getImageData(0, 0, mask.width, mask.height);
+            processMask(maskData, state.threshold, state.feather);
+            tempCtx.putImageData(maskData, 0, 0);
+
+            // Composite at full resolution
+            compositeForeground(downloadCtx, state.uploadedImage, tempCanvas, downloadCanvas.width, downloadCanvas.height);
+
+            // Download
+            downloadCanvas.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `bggone-${Date.now()}.png`;
+                a.click();
+                URL.revokeObjectURL(url);
+
+                showStatus('success', '💾 Image downloaded successfully!');
+            }, 'image/png');
+        }
+
+        // ===== Reset =====
+        function resetApp() {
+            // Clean up
+            if (state.uploadedImage && state.uploadedImage.src.startsWith('blob:')) {
+                URL.revokeObjectURL(state.uploadedImage.src);
+            }
+
+            // Reset state
+            state.uploadedImage = null;
+            state.segmentationMask = null;
+            state.processedImageData = null;
+
+            // Reset UI
+            elements.originalCanvas.classList.add('hidden');
+            elements.resultCanvas.classList.add('hidden');
+            elements.originalEmpty.classList.remove('hidden');
+            elements.resultEmpty.classList.remove('hidden');
+            elements.processBtn.disabled = true;
+            elements.downloadBtn.disabled = true;
+            elements.resetBtn.disabled = true;
+            elements.fileInput.value = '';
+            elements.status.classList.add('hidden');
+
+            // Reset background
+            elements.resultContainer.style.background =
+                'repeating-conic-gradient(#f0f0f0 0% 25%, white 0% 50%) 50% / 20px 20px';
+        }
+
+        // ===== Utilities =====
+        function showStatus(type, message) {
+            elements.status.className = `status ${type}`;
+
+            if (type === 'processing') {
+                elements.status.innerHTML = `<span class="spinner"></span>${message}`;
+            } else {
+                elements.status.textContent = message;
+            }
+
+            elements.status.classList.remove('hidden');
+        }
+
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // ===== Initialize =====
+        window.addEventListener('load', () => {
+            initializeMediaPipe();
+        });
+
+        // Clean up on page unload
+        window.addEventListener('beforeunload', () => {
+            if (state.uploadedImage && state.uploadedImage.src.startsWith('blob:')) {
+                URL.revokeObjectURL(state.uploadedImage.src);
+            }
+        });
+    </script>
+</body>
+</html>
