@@ -225,7 +225,11 @@
 
         // ===== ONNX Runtime Setup =====
         let onnxSession = null;
-        const U2NET_MODEL_URL = 'https://huggingface.co/schmuell/u2net-onnx/resolve/main/u2net.onnx';
+        // Multiple model URLs in priority order — tried sequentially until one succeeds
+        const U2NET_MODEL_URLS = [
+            'https://huggingface.co/vishnusureshperumbavoor/u2net_onnx/resolve/main/u2net.onnx',
+            'https://huggingface.co/frankminors123/U2Net_ONNX/resolve/main/u2net.onnx',
+        ];
 
         async function initializeONNX(retryCount = 0) {
             try {
@@ -237,12 +241,28 @@
 
                 showStatus('processing', '⏳ Loading U²-Net model... This may take a moment on first load.');
 
-                // Load the U²-Net model
-                onnxSession = await ort.InferenceSession.create(U2NET_MODEL_URL, {
-                    executionProviders: ['wasm'],
-                });
+                // Try each model URL in order until one succeeds
+                let lastError = null;
+                for (let i = 0; i < U2NET_MODEL_URLS.length; i++) {
+                    try {
+                        if (i > 0) {
+                            showStatus('processing', `⏳ Trying alternative model source (${i + 1}/${U2NET_MODEL_URLS.length})...`);
+                        }
+                        onnxSession = await ort.InferenceSession.create(U2NET_MODEL_URLS[i], {
+                            executionProviders: ['wasm'],
+                        });
+                        console.log(`U²-Net model loaded successfully from source ${i + 1}`);
+                        break;
+                    } catch (e) {
+                        console.warn(`Model source ${i + 1} failed:`, e);
+                        lastError = e;
+                    }
+                }
 
-                console.log('U²-Net model loaded successfully');
+                if (lastError) {
+                    throw lastError;
+                }
+
                 showStatus('success', '✅ U²-Net model loaded. Ready to process images.');
 
                 // Hide status after 3 seconds if no image is loaded
