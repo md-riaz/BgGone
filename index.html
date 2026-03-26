@@ -532,7 +532,7 @@
         }
 
         async function preprocessImageForU2Net(img, targetSize) {
-            const safeTargetSize = Math.min(targetSize, DYNAMIC_MODEL_INPUT_SIZE_CAP);
+            const safeTargetSize = clampDynamicModelInputSize(targetSize);
 
             // Create canvas for preprocessing
             const canvas = document.createElement('canvas');
@@ -574,6 +574,10 @@
             }
         }
 
+        function clampDynamicModelInputSize(size) {
+            return Math.min(size, DYNAMIC_MODEL_INPUT_SIZE_CAP);
+        }
+
         function resolveModelInputSize(requestedSize) {
             // Fixed-size models (like classic U²-Net) must use declared input dimensions.
             if (modelInputSizeMode === 'fixed' && Number.isFinite(modelInputSize) && modelInputSize > 0) {
@@ -582,7 +586,7 @@
 
             // Dynamic-size models can benefit from higher quality presets.
             if (modelInputSizeMode === 'dynamic' && Number.isFinite(requestedSize) && requestedSize > 0) {
-                return Math.min(requestedSize, DYNAMIC_MODEL_INPUT_SIZE_CAP);
+                return clampDynamicModelInputSize(requestedSize);
             }
 
             // Unknown metadata fallback keeps classic U²-Net behavior.
