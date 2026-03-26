@@ -224,7 +224,7 @@
         };
 
         // ===== ONNX Runtime Setup =====
-        const DEFAULT_MODEL_INPUT_SIZE = 512;
+        const DEFAULT_MODEL_INPUT_SIZE = 320;
         let onnxSession = null;
         let modelInputSize = null;
         // Multiple model URLs in priority order — tried sequentially until one succeeds
@@ -487,10 +487,13 @@
                     }
                 }
 
-                // Calculate processing dimensions based on quality
-                // Fast: 512px, Balanced: 1024px, Best: 2048px
+                // Note: U2Net model requires fixed 320x320 input size
+                // Quality settings (Fast/Balanced/Best) are currently not used for model input
+                // but could be used for future post-processing enhancements
                 const requestedSize = getProcessingSize();
                 const inputSize = resolveModelInputSize(requestedSize);
+
+                console.log('Processing with requested size:', requestedSize, 'resolved size:', inputSize);
 
                 // Preprocess image for U²-Net
                 const inputTensor = await preprocessImageForU2Net(state.uploadedImage, inputSize);
@@ -567,36 +570,47 @@
         }
 
         function resolveModelInputSize(requestedSize) {
-            if (Number.isFinite(modelInputSize)) {
+            // Always use the model's actual input size if it's been determined
+            if (Number.isFinite(modelInputSize) && modelInputSize > 0) {
                 return modelInputSize;
             }
-            if (Number.isFinite(requestedSize)) {
-                return requestedSize;
-            }
+            // Otherwise, use the default model size (U2Net expects 320x320)
+            // The requestedSize is NOT used because the model has fixed input dimensions
             return DEFAULT_MODEL_INPUT_SIZE;
         }
 
         function updateModelInputSizeFromSession() {
-            if (!onnxSession || !onnxSession.inputNames?.length || !onnxSession.inputMetadata) {
+            if (!onnxSession || !onnxSession.inputNames?.length) {
+                console.warn('ONNX session or input names not available');
                 return;
             }
 
             const firstInputName = onnxSession.inputNames[0];
-            const meta = onnxSession.inputMetadata[firstInputName];
-            const dims = meta?.dimensions;
+            console.log('Model input name:', firstInputName);
 
-            if (Array.isArray(dims) && dims.length >= 4) {
-                const height = dims[2];
-                const width = dims[3];
+            // Try to get dimensions from inputMetadata
+            if (onnxSession.inputMetadata) {
+                const meta = onnxSession.inputMetadata[firstInputName];
+                const dims = meta?.dimensions;
+                console.log('Model input dimensions from metadata:', dims);
 
-                if (Number.isFinite(height) && Number.isFinite(width) && height === width) {
-                    modelInputSize = height;
-                    return;
+                if (Array.isArray(dims) && dims.length >= 4) {
+                    const height = dims[2];
+                    const width = dims[3];
+
+                    if (Number.isFinite(height) && Number.isFinite(width) && height === width && height > 0) {
+                        modelInputSize = height;
+                        console.log('Using model input size from metadata:', modelInputSize);
+                        return;
+                    }
                 }
             }
 
-            // If metadata is missing or non-numeric, fall back to requested size instead.
-            modelInputSize = null;
+            // Try alternative approach: create a test tensor and see what the model accepts
+            // For U2Net models, the standard input size is 320x320
+            // If we can't determine it from metadata, use 320 as the default for U2Net
+            console.warn('Could not determine model input size from metadata, using default 320 for U2Net');
+            modelInputSize = 320;
         }
 
         async function onSegmentationResults(outputTensor, originalImage) {
