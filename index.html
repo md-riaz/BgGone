@@ -227,12 +227,12 @@
         const DEFAULT_MODEL_INPUT_SIZE = 320;
         let onnxSession = null;
         let modelInputSize = null;
-        let modelInputMode = 'unknown'; // 'fixed' | 'dynamic' | 'unknown'
+        let modelInputSizeMode = 'unknown'; // 'fixed' | 'dynamic' | 'unknown'
         // Local model paths are tried first so the model can be committed directly in this repo.
         // Remote URLs remain as fallback for convenience.
         const MODEL_URLS = [
-            './models/isnet-general-use.onnx',
-            './models/u2net.onnx',
+            './models/isnet-general-use.onnx', // dynamic input model (supports >320)
+            './models/u2net.onnx', // fixed 320x320 model
             'https://huggingface.co/vishnusureshperumbavoor/u2net_onnx/resolve/main/u2net.onnx',
             'https://huggingface.co/frankminors123/U2Net_ONNX/resolve/main/u2net.onnx',
         ];
@@ -495,7 +495,7 @@
                 const requestedSize = getProcessingSize();
                 const inputSize = resolveModelInputSize(requestedSize);
 
-                console.log('Processing with requested size:', requestedSize, 'resolved size:', inputSize, 'mode:', modelInputMode);
+                console.log('Processing with requested size:', requestedSize, 'resolved size:', inputSize, 'mode:', modelInputSizeMode);
 
                 // Preprocess image for U²-Net
                 const inputTensor = await preprocessImageForU2Net(state.uploadedImage, inputSize);
@@ -573,12 +573,12 @@
 
         function resolveModelInputSize(requestedSize) {
             // Fixed-size models (like classic U²-Net) must use declared input dimensions.
-            if (modelInputMode === 'fixed' && Number.isFinite(modelInputSize) && modelInputSize > 0) {
+            if (modelInputSizeMode === 'fixed' && Number.isFinite(modelInputSize) && modelInputSize > 0) {
                 return modelInputSize;
             }
 
             // Dynamic-size models can benefit from higher quality presets.
-            if (modelInputMode === 'dynamic' && Number.isFinite(requestedSize) && requestedSize > 0) {
+            if (modelInputSizeMode === 'dynamic' && Number.isFinite(requestedSize) && requestedSize > 0) {
                 return requestedSize;
             }
 
@@ -589,9 +589,12 @@
         function updateModelInputSizeFromSession() {
             if (!onnxSession || !onnxSession.inputNames?.length) {
                 console.warn('ONNX session or input names not available');
-                modelInputMode = 'unknown';
+                modelInputSizeMode = 'unknown';
                 return;
             }
+
+            const isDynamicDimension = (value) =>
+                typeof value === 'string' || value === null || value === undefined;
 
             const firstInputName = onnxSession.inputNames[0];
             console.log('Model input name:', firstInputName);
@@ -608,16 +611,16 @@
 
                     if (Number.isFinite(height) && Number.isFinite(width) && height === width && height > 0) {
                         modelInputSize = height;
-                        modelInputMode = 'fixed';
+                        modelInputSizeMode = 'fixed';
                         console.log('Using model input size from metadata:', modelInputSize);
                         return;
                     }
 
-                    const isDynamicHeight = typeof height === 'string' || height == null;
-                    const isDynamicWidth = typeof width === 'string' || width == null;
+                    const isDynamicHeight = isDynamicDimension(height);
+                    const isDynamicWidth = isDynamicDimension(width);
                     if (isDynamicHeight || isDynamicWidth) {
                         modelInputSize = null;
-                        modelInputMode = 'dynamic';
+                        modelInputSizeMode = 'dynamic';
                         console.log('Detected dynamic model input dimensions. Quality presets will control input size.');
                         return;
                     }
@@ -626,7 +629,7 @@
 
             console.warn('Could not determine model input size from metadata, using default 320 for U2Net');
             modelInputSize = DEFAULT_MODEL_INPUT_SIZE;
-            modelInputMode = 'fixed';
+            modelInputSizeMode = 'fixed';
         }
 
         async function onSegmentationResults(outputTensor, originalImage) {
