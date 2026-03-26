@@ -487,8 +487,9 @@
                     }
                 }
 
-                // Calculate processing dimensions based on quality
-                // Fast: 512px, Balanced: 1024px, Best: 2048px
+                // Note: U2Net model requires fixed 320x320 input size
+                // Quality settings (Fast/Balanced/Best) are currently not used for model input
+                // but could be used for future post-processing enhancements
                 const requestedSize = getProcessingSize();
                 const inputSize = resolveModelInputSize(requestedSize);
 
@@ -569,12 +570,12 @@
         }
 
         function resolveModelInputSize(requestedSize) {
-            if (Number.isFinite(modelInputSize)) {
+            // Always use the model's actual input size if it's been determined
+            if (Number.isFinite(modelInputSize) && modelInputSize > 0) {
                 return modelInputSize;
             }
-            if (Number.isFinite(requestedSize)) {
-                return requestedSize;
-            }
+            // Otherwise, use the default model size (U2Net expects 320x320)
+            // The requestedSize is NOT used because the model has fixed input dimensions
             return DEFAULT_MODEL_INPUT_SIZE;
         }
 
