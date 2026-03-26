@@ -227,8 +227,12 @@
         const DEFAULT_MODEL_INPUT_SIZE = 320;
         let onnxSession = null;
         let modelInputSize = null;
-        // Multiple model URLs in priority order — tried sequentially until one succeeds
-        const U2NET_MODEL_URLS = [
+        let modelInputSizeMode = 'unknown'; // 'fixed' | 'dynamic' | 'unknown'
+        // Local model paths are tried first so the model can be committed directly in this repo.
+        // Remote URLs remain as fallback for convenience.
+        const MODEL_URLS = [
+            './models/isnet-general-use.onnx', // dynamic input model (supports >320)
+            './models/u2net.onnx', // fixed 320x320 model
             'https://huggingface.co/vishnusureshperumbavoor/u2net_onnx/resolve/main/u2net.onnx',
             'https://huggingface.co/frankminors123/U2Net_ONNX/resolve/main/u2net.onnx',
         ];
@@ -241,19 +245,20 @@
                 // Configure ONNX Runtime to use WASM backend
                 ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/';
 
-                showStatus('processing', '⏳ Loading U²-Net model... This may take a moment on first load.');
+                showStatus('processing', '⏳ Loading segmentation model... This may take a moment on first load.');
 
                 // Try each model URL in order until one succeeds
                 let lastError = null;
-                for (let i = 0; i < U2NET_MODEL_URLS.length; i++) {
+                for (let i = 0; i < MODEL_URLS.length; i++) {
                     try {
                         if (i > 0) {
-                            showStatus('processing', `⏳ Trying alternative model source (${i + 1}/${U2NET_MODEL_URLS.length})...`);
+                            showStatus('processing', `⏳ Trying alternative model source (${i + 1}/${MODEL_URLS.length})...`);
                         }
-                        onnxSession = await ort.InferenceSession.create(U2NET_MODEL_URLS[i], {
+                        onnxSession = await ort.InferenceSession.create(MODEL_URLS[i], {
                             executionProviders: ['wasm'],
                         });
                         updateModelInputSizeFromSession();
+                        console.log('Loaded model from:', MODEL_URLS[i]);
                         break;
                     } catch (e) {
                         showStatus('processing', `⏳ Source ${i + 1} failed: ${formatError(e)}. Trying next...`);
@@ -265,7 +270,7 @@
                     throw lastError;
                 }
 
-                showStatus('success', '✅ U²-Net model loaded. Ready to process images.');
+                showStatus('success', '✅ Segmentation model loaded. Ready to process images.');
 
                 // Hide status after 3 seconds if no image is loaded
                 setTimeout(() => {
@@ -487,13 +492,10 @@
                     }
                 }
 
-                // Note: U2Net model requires fixed 320x320 input size
-                // Quality settings (Fast/Balanced/Best) are currently not used for model input
-                // but could be used for future post-processing enhancements
                 const requestedSize = getProcessingSize();
                 const inputSize = resolveModelInputSize(requestedSize);
 
-                console.log('Processing with requested size:', requestedSize, 'resolved size:', inputSize);
+                console.log('Processing with requested size:', requestedSize, 'resolved size:', inputSize, 'mode:', modelInputSizeMode);
 
                 // Preprocess image for U²-Net
                 const inputTensor = await preprocessImageForU2Net(state.uploadedImage, inputSize);
@@ -570,20 +572,29 @@
         }
 
         function resolveModelInputSize(requestedSize) {
-            // Always use the model's actual input size if it's been determined
-            if (Number.isFinite(modelInputSize) && modelInputSize > 0) {
+            // Fixed-size models (like classic U²-Net) must use declared input dimensions.
+            if (modelInputSizeMode === 'fixed' && Number.isFinite(modelInputSize) && modelInputSize > 0) {
                 return modelInputSize;
             }
-            // Otherwise, use the default model size (U2Net expects 320x320)
-            // The requestedSize is NOT used because the model has fixed input dimensions
+
+            // Dynamic-size models can benefit from higher quality presets.
+            if (modelInputSizeMode === 'dynamic' && Number.isFinite(requestedSize) && requestedSize > 0) {
+                return requestedSize;
+            }
+
+            // Unknown metadata fallback keeps classic U²-Net behavior.
             return DEFAULT_MODEL_INPUT_SIZE;
         }
 
         function updateModelInputSizeFromSession() {
             if (!onnxSession || !onnxSession.inputNames?.length) {
                 console.warn('ONNX session or input names not available');
+                modelInputSizeMode = 'unknown';
                 return;
             }
+
+            const isDynamicDimension = (value) =>
+                typeof value === 'string' || value === null || value === undefined;
 
             const firstInputName = onnxSession.inputNames[0];
             console.log('Model input name:', firstInputName);
@@ -600,17 +611,25 @@
 
                     if (Number.isFinite(height) && Number.isFinite(width) && height === width && height > 0) {
                         modelInputSize = height;
+                        modelInputSizeMode = 'fixed';
                         console.log('Using model input size from metadata:', modelInputSize);
+                        return;
+                    }
+
+                    const isDynamicHeight = isDynamicDimension(height);
+                    const isDynamicWidth = isDynamicDimension(width);
+                    if (isDynamicHeight || isDynamicWidth) {
+                        modelInputSize = null;
+                        modelInputSizeMode = 'dynamic';
+                        console.log('Detected dynamic model input dimensions. Quality presets will control input size.');
                         return;
                     }
                 }
             }
 
-            // Try alternative approach: create a test tensor and see what the model accepts
-            // For U2Net models, the standard input size is 320x320
-            // If we can't determine it from metadata, use 320 as the default for U2Net
             console.warn('Could not determine model input size from metadata, using default 320 for U2Net');
-            modelInputSize = 320;
+            modelInputSize = DEFAULT_MODEL_INPUT_SIZE;
+            modelInputSizeMode = 'fixed';
         }
 
         async function onSegmentationResults(outputTensor, originalImage) {

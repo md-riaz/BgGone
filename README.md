@@ -20,7 +20,14 @@ Fully offline browser-based photo background remover using U²-Net deep learning
 
 ## Usage
 
-Simply open `index.html` in a modern web browser. The U²-Net model will be loaded automatically from HuggingFace on first use.
+Simply open `index.html` in a modern web browser.
+
+By default, BgGone now tries to load model files from the repository first (in this order):
+
+- `./models/isnet-general-use.onnx` (dynamic input supported; preferred for input sizes larger than 320x320)
+- `./models/u2net.onnx` (fixed 320x320 input fallback)
+
+If local files are not present, it falls back to remote HuggingFace URLs.
 
 1. Upload an image (JPG, PNG, or WebP)
 2. Click "Remove Background"
@@ -34,3 +41,6 @@ Simply open `index.html` in a modern web browser. The U²-Net model will be load
 - **Best**: 2048px processing resolution
 
 Higher quality modes provide better accuracy but take longer to process.
+
+- For **fixed-input models** (for example classic U²-Net), the app uses the model's required input size.
+- For **dynamic-input models**, quality presets directly control the model input size (Fast/Balanced/Best), so inputs can be larger than fixed 320.
