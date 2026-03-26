@@ -224,7 +224,9 @@
         };
 
         // ===== ONNX Runtime Setup =====
+        const DEFAULT_MODEL_INPUT_SIZE = 512;
         let onnxSession = null;
+        let modelInputSize = null;
         // Multiple model URLs in priority order — tried sequentially until one succeeds
         const U2NET_MODEL_URLS = [
             'https://huggingface.co/vishnusureshperumbavoor/u2net_onnx/resolve/main/u2net.onnx',
@@ -251,6 +253,7 @@
                         onnxSession = await ort.InferenceSession.create(U2NET_MODEL_URLS[i], {
                             executionProviders: ['wasm'],
                         });
+                        updateModelInputSizeFromSession();
                         break;
                     } catch (e) {
                         showStatus('processing', `⏳ Source ${i + 1} failed: ${formatError(e)}. Trying next...`);
@@ -486,10 +489,11 @@
 
                 // Calculate processing dimensions based on quality
                 // Fast: 512px, Balanced: 1024px, Best: 2048px
-                const modelInputSize = getProcessingSize();
+                const requestedSize = getProcessingSize();
+                const inputSize = resolveModelInputSize(requestedSize);
 
                 // Preprocess image for U²-Net
-                const inputTensor = await preprocessImageForU2Net(state.uploadedImage, modelInputSize);
+                const inputTensor = await preprocessImageForU2Net(state.uploadedImage, inputSize);
 
                 // Run inference
                 const inputName = onnxSession.inputNames?.[0];
@@ -560,6 +564,39 @@
                 case 'best': return 2048;
                 default: return 1024;
             }
+        }
+
+        function resolveModelInputSize(requestedSize) {
+            if (Number.isFinite(modelInputSize)) {
+                return modelInputSize;
+            }
+            if (Number.isFinite(requestedSize)) {
+                return requestedSize;
+            }
+            return DEFAULT_MODEL_INPUT_SIZE;
+        }
+
+        function updateModelInputSizeFromSession() {
+            if (!onnxSession || !onnxSession.inputNames?.length || !onnxSession.inputMetadata) {
+                return;
+            }
+
+            const firstInputName = onnxSession.inputNames[0];
+            const meta = onnxSession.inputMetadata[firstInputName];
+            const dims = meta?.dimensions;
+
+            if (Array.isArray(dims) && dims.length >= 4) {
+                const height = dims[2];
+                const width = dims[3];
+
+                if (Number.isFinite(height) && Number.isFinite(width) && height === width) {
+                    modelInputSize = height;
+                    return;
+                }
+            }
+
+            // If metadata is missing or non-numeric, fall back to requested size instead.
+            modelInputSize = null;
         }
 
         async function onSegmentationResults(outputTensor, originalImage) {
