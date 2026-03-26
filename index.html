@@ -251,10 +251,9 @@
                         onnxSession = await ort.InferenceSession.create(U2NET_MODEL_URLS[i], {
                             executionProviders: ['wasm'],
                         });
-                        console.log(`U²-Net model loaded successfully from source ${i + 1}`);
                         break;
                     } catch (e) {
-                        console.warn(`Model source ${i + 1} failed:`, e);
+                        showStatus('processing', `⏳ Source ${i + 1} failed: ${formatError(e)}. Trying next...`);
                         lastError = e;
                     }
                 }
@@ -272,8 +271,6 @@
                     }
                 }, 3000);
             } catch (error) {
-                console.error('Failed to load U²-Net model:', error);
-
                 // Provide more detailed error messages
                 let errorMessage = '❌ Failed to load model. ';
 
@@ -289,7 +286,7 @@
                     errorMessage += 'An unexpected error occurred.';
                 }
 
-                showStatus('error', errorMessage);
+                showStatus('error', `${errorMessage} (${formatError(error)})`);
 
                 // Show retry button
                 elements.retryModelContainer.classList.remove('hidden');
@@ -297,7 +294,7 @@
                 // Automatic retry for network errors (max 2 retries)
                 if (retryCount < 2 && (error.message?.includes('fetch') || error.message?.includes('network'))) {
                     const delay = (retryCount + 1) * 2000; // 2s, 4s
-                    console.log(`Retrying in ${delay}ms... (attempt ${retryCount + 1}/2)`);
+                    showStatus('processing', `⏳ Retrying model load in ${delay / 1000}s...`);
                     setTimeout(() => {
                         showStatus('processing', `⏳ Retrying model load (attempt ${retryCount + 2}/3)...`);
                         initializeONNX(retryCount + 1);
@@ -518,8 +515,7 @@
                 await onSegmentationResults(outputTensor, state.uploadedImage);
 
             } catch (error) {
-                console.error('Processing error:', error);
-                showStatus('error', '❌ Processing failed. Please try again.');
+                showStatus('error', `❌ Processing failed: ${formatError(error)}`);
                 state.isProcessing = false;
                 elements.processBtn.disabled = false;
             }
@@ -608,8 +604,7 @@
                 elements.downloadBtn.disabled = false;
                 showStatus('success', '✨ Background removed successfully! You can adjust settings or download the result.');
             } catch (error) {
-                console.error('Error processing segmentation results:', error);
-                showStatus('error', '❌ Failed to process results. Please try again.');
+                showStatus('error', `❌ Failed to process results: ${formatError(error)}`);
                 state.isProcessing = false;
                 elements.processBtn.disabled = false;
             }
@@ -861,6 +856,13 @@
                 clearTimeout(timeout);
                 timeout = setTimeout(later, wait);
             };
+        }
+
+        function formatError(error) {
+            if (!error) return 'Unknown error';
+            if (typeof error === 'string') return error;
+            if (error.message) return error.message;
+            return error.toString ? error.toString() : 'Unknown error';
         }
 
         // ===== Initialize =====
