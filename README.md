@@ -22,10 +22,10 @@ Fully offline browser-based photo background remover using U²-Net deep learning
 
 Simply open `index.html` in a modern web browser.
 
-By default, BgGone now tries to load model files from the repository first:
+By default, BgGone now tries to load model files from the repository first (in this order):
 
-- `./models/u2net.onnx` (fixed 320×320 input)
-- `./models/isnet-general-use.onnx` (dynamic input supported when available)
+- `./models/isnet-general-use.onnx` (dynamic input supported; preferred for larger than 320 input)
+- `./models/u2net.onnx` (fixed 320×320 input fallback)
 
 If local files are not present, it falls back to remote HuggingFace URLs.
 
