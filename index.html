@@ -226,7 +226,7 @@
         // ===== ONNX Runtime Setup =====
         const DEFAULT_MODEL_INPUT_SIZE = 512;
         let onnxSession = null;
-        let modelInputSize = DEFAULT_MODEL_INPUT_SIZE;
+        let modelInputSize = null;
         // Multiple model URLs in priority order — tried sequentially until one succeeds
         const U2NET_MODEL_URLS = [
             'https://huggingface.co/vishnusureshperumbavoor/u2net_onnx/resolve/main/u2net.onnx',
@@ -577,8 +577,6 @@
         }
 
         function updateModelInputSizeFromSession() {
-            modelInputSize = DEFAULT_MODEL_INPUT_SIZE;
-
             if (!onnxSession || !onnxSession.inputNames?.length || !onnxSession.inputMetadata) {
                 return;
             }
@@ -593,8 +591,12 @@
 
                 if (Number.isFinite(height) && Number.isFinite(width) && height === width) {
                     modelInputSize = height;
+                    return;
                 }
             }
+
+            // If metadata is missing or non-numeric, fall back to requested size instead.
+            modelInputSize = null;
         }
 
         async function onSegmentationResults(outputTensor, originalImage) {
