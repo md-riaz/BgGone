@@ -259,7 +259,7 @@
                     }
                 }
 
-                if (lastError) {
+                if (!onnxSession && lastError) {
                     throw lastError;
                 }
 
@@ -495,11 +495,24 @@
                 const inputTensor = await preprocessImageForU2Net(state.uploadedImage, modelInputSize);
 
                 // Run inference
-                const feeds = { input: inputTensor };
+                const inputName = onnxSession.inputNames?.[0];
+                const outputName = onnxSession.outputNames?.[0];
+
+                if (!inputName) {
+                    throw new Error('Model input name is unavailable.');
+                }
+                if (!outputName) {
+                    throw new Error('Model output name is unavailable.');
+                }
+
+                const feeds = { [inputName]: inputTensor };
                 const results = await onnxSession.run(feeds);
 
-                // Get output (mask)
-                const outputTensor = results.output;
+                // Get output (mask) using declared output name with safe fallbacks
+                const outputTensor = results[outputName] || results.output || results[Object.keys(results)[0]];
+                if (!outputTensor) {
+                    throw new Error('Model output tensor missing from inference results.');
+                }
 
                 // Postprocess the mask
                 await onSegmentationResults(outputTensor, state.uploadedImage);
