@@ -225,6 +225,7 @@
 
         // ===== ONNX Runtime Setup =====
         const DEFAULT_MODEL_INPUT_SIZE = 320;
+        const DYNAMIC_MODEL_INPUT_SIZE_CAP = 512;
         let onnxSession = null;
         let modelInputSize = null;
         let modelInputSizeMode = 'unknown'; // 'fixed' | 'dynamic' | 'unknown'
@@ -531,17 +532,19 @@
         }
 
         async function preprocessImageForU2Net(img, targetSize) {
+            const safeTargetSize = clampDynamicModelInputSize(targetSize);
+
             // Create canvas for preprocessing
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
-            canvas.width = targetSize;
-            canvas.height = targetSize;
+            canvas.width = safeTargetSize;
+            canvas.height = safeTargetSize;
 
             // Draw and resize image to model input size
-            ctx.drawImage(img, 0, 0, targetSize, targetSize);
+            ctx.drawImage(img, 0, 0, safeTargetSize, safeTargetSize);
 
             // Get image data
-            const imageData = ctx.getImageData(0, 0, targetSize, targetSize);
+            const imageData = ctx.getImageData(0, 0, safeTargetSize, safeTargetSize);
             const pixels = imageData.data;
 
             // Prepare tensor data (normalize to [0, 1] and convert to CHW format)
@@ -559,7 +562,7 @@
             const inputData = Float32Array.from([...red, ...green, ...blue]);
 
             // Create tensor
-            return new ort.Tensor('float32', inputData, [1, 3, targetSize, targetSize]);
+            return new ort.Tensor('float32', inputData, [1, 3, safeTargetSize, safeTargetSize]);
         }
 
         function getProcessingSize() {
@@ -571,6 +574,10 @@
             }
         }
 
+        function clampDynamicModelInputSize(size) {
+            return Math.min(size, DYNAMIC_MODEL_INPUT_SIZE_CAP);
+        }
+
         function resolveModelInputSize(requestedSize) {
             // Fixed-size models (like classic U²-Net) must use declared input dimensions.
             if (modelInputSizeMode === 'fixed' && Number.isFinite(modelInputSize) && modelInputSize > 0) {
@@ -579,7 +586,7 @@
 
             // Dynamic-size models can benefit from higher quality presets.
             if (modelInputSizeMode === 'dynamic' && Number.isFinite(requestedSize) && requestedSize > 0) {
-                return requestedSize;
+                return clampDynamicModelInputSize(requestedSize);
             }
 
             // Unknown metadata fallback keeps classic U²-Net behavior.
