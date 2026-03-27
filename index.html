@@ -237,6 +237,70 @@
             'https://huggingface.co/vishnusureshperumbavoor/u2net_onnx/resolve/main/u2net.onnx',
             'https://huggingface.co/frankminors123/U2Net_ONNX/resolve/main/u2net.onnx',
         ];
+        const MODEL_OPERATION_TIMEOUT_MS = 15000;
+
+        function runWithTimeout(startOperation, timeoutMs, timeoutMessage, onTimeout) {
+            return new Promise((resolve, reject) => {
+                let settled = false;
+                const timeoutId = setTimeout(() => {
+                    if (settled) return;
+                    settled = true;
+                    if (typeof onTimeout === 'function') {
+                        onTimeout();
+                    }
+                    reject(new Error(timeoutMessage));
+                }, timeoutMs);
+
+                Promise.resolve()
+                    .then(startOperation)
+                    .then(
+                        (result) => {
+                            if (settled) return;
+                            settled = true;
+                            clearTimeout(timeoutId);
+                            resolve(result);
+                        },
+                        (error) => {
+                            if (settled) return;
+                            settled = true;
+                            clearTimeout(timeoutId);
+                            reject(error);
+                        }
+                    );
+            });
+        }
+
+        async function createSessionWithTimeout(modelUrl, timeoutMs = MODEL_OPERATION_TIMEOUT_MS) {
+            const downloadTimeoutMessage = `Model download timed out after ${Math.ceil(timeoutMs / 1000)}s`;
+            const parseTimeoutMessage = `Model buffer read timed out after ${Math.ceil(timeoutMs / 1000)}s`;
+            const initTimeoutMessage = `Model initialization timed out after ${Math.ceil(timeoutMs / 1000)}s`;
+            const abortController = new AbortController();
+
+            const response = await runWithTimeout(
+                () => fetch(modelUrl, { signal: abortController.signal }),
+                timeoutMs,
+                downloadTimeoutMessage,
+                () => abortController.abort()
+            );
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status} while loading model source`);
+            }
+
+            const modelBuffer = await runWithTimeout(
+                () => response.arrayBuffer(),
+                timeoutMs,
+                parseTimeoutMessage
+            );
+            return await runWithTimeout(
+                () =>
+                    ort.InferenceSession.create(modelBuffer, {
+                        executionProviders: ['wasm'],
+                    }),
+                timeoutMs,
+                initTimeoutMessage
+            );
+        }
 
         async function initializeONNX(retryCount = 0) {
             try {
@@ -255,9 +319,7 @@
                         if (i > 0) {
                             showStatus('processing', `⏳ Trying alternative model source (${i + 1}/${MODEL_URLS.length})...`);
                         }
-                        onnxSession = await ort.InferenceSession.create(MODEL_URLS[i], {
-                            executionProviders: ['wasm'],
-                        });
+                        onnxSession = await createSessionWithTimeout(MODEL_URLS[i]);
                         updateModelInputSizeFromSession();
                         console.log('Loaded model from:', MODEL_URLS[i]);
                         break;
@@ -291,6 +353,8 @@
                     errorMessage += 'WebAssembly initialization failed. Your browser may not support WASM.';
                 } else if (error.message && error.message.includes('memory')) {
                     errorMessage += 'Insufficient memory. Try closing other tabs.';
+                } else if (error.message && error.message.includes('timed out')) {
+                    errorMessage += 'Model source timed out. Try again or check your connection.';
                 } else {
                     errorMessage += 'An unexpected error occurred.';
                 }
